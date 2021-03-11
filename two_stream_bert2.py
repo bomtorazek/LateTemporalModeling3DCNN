@@ -14,7 +14,7 @@ import numpy as np
 
 
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
+os.environ["CUDA_VISIBLE_DEVICES"]='2'
 
 import torch
 import torch.nn as nn
@@ -48,7 +48,7 @@ parser.add_argument('--settings', metavar='DIR', default='./datasets/settings',
 #                    choices=["rgb", "flow"],
 #                    help='modality: rgb | flow')
 parser.add_argument('--dataset', '-d', default='hmdb51',
-                    choices=["ucf101", "hmdb51", "smtV2", "window"],
+                    choices=["ucf101", "hmdb51", "smtV2", "window", "cvpr", "cvpr_le"],
                     help='dataset: ucf101 | hmdb51 | smtV2')
 
 parser.add_argument('--arch', '-a', default='rgb_resneXt3D64f101_bert10_FRMB',
@@ -171,6 +171,10 @@ def main():
         dataset='./datasets/smtV2_frames'
     elif args.dataset=='window':
         dataset='./datasets/window_frames'
+    elif args.dataset=='cvpr':
+        dataset='./datasets/cvpr_frames'
+    elif args.dataset=='cvpr_le':
+        dataset='./datasets/cvpr_le_frames'
     else:
         print("No convenient dataset entered, exiting....")
         return 0
@@ -280,6 +284,7 @@ def main():
     if not os.path.exists(train_split_file) or not os.path.exists(val_split_file):
         print("No split file exists in %s directory. Preprocess the dataset first" % (args.settings))
 
+    #root = 'cvpr_frames'
     train_dataset = datasets.__dict__[args.dataset](root=dataset,
                                                     source=train_split_file,
                                                     phase="train",
@@ -398,7 +403,11 @@ def build_model():
     elif args.dataset=='window':
         print('model path is: %s' %(model_path))
         model = models.__dict__[args.arch](modelPath=model_path, num_classes=3, length=args.num_seg)
+    elif 'cvpr' in args.dataset: #FIXME
+        print('model path is: %s' %(model_path))
+        model = models.__dict__[args.arch](modelPath=model_path, num_classes=6, length=args.num_seg)
     
+
     if torch.cuda.device_count() > 1:
         model=torch.nn.DataParallel(model)
     model = model.cuda()
