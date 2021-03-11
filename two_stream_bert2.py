@@ -86,7 +86,7 @@ parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
 parser.add_argument('-c', '--continue', dest='contine', action='store_true',
                     help='evaluate model on validation set')
 
-best_prec1 = 0
+best_acc1 = 0
 best_loss = 30
 warmUpEpoch=5
 
@@ -96,7 +96,7 @@ HALF = False
 training_continue = False
 
 def main():
-    global args, best_prec1,model,writer,best_loss, length, width, height, input_size, scheduler
+    global args, best_acc1,model,writer,best_loss, length, width, height, input_size, scheduler
     args = parser.parse_args()
     training_continue = args.contine
     if '3D' in args.arch:
@@ -133,11 +133,11 @@ def main():
         model = build_model_validate()
         optimizer = AdamW(model.parameters(), lr= args.lr, weight_decay=args.weight_decay)
     elif training_continue:
-        model, startEpoch, optimizer, best_prec1 = build_model_continue()
+        model, startEpoch, optimizer, best_acc1 = build_model_continue()
         for param_group in optimizer.param_groups:
             lr = param_group['lr']
             #param_group['lr'] = lr
-        print("Continuing with best precision: %.3f and start epoch %d and lr: %f" %(best_prec1,startEpoch,lr))
+        print("Continuing with best accuracy: %.3f and start epoch %d and lr: %f" %(best_acc1,startEpoch,lr))
     else:
         print("Building model with ADAMW... ")
         model = build_model()
@@ -321,7 +321,7 @@ def main():
         num_workers=args.workers, pin_memory=True)
 
     if args.evaluate:
-        prec1,prec3,lossClassification = validate(val_loader, model, criterion,criterion2,modality)
+        acc1,acc3,lossClassification = validate(val_loader, model, criterion,criterion2,modality)
         return
 
     for epoch in range(startEpoch, args.epochs):
@@ -331,21 +331,21 @@ def main():
         train(train_loader, model, criterion,criterion2, optimizer, epoch,modality)
 
         # evaluate on validation set
-        prec1 = 0.0
+        acc1 = 0.0
         lossClassification = 0
         if (epoch + 1) % args.save_freq == 0:
-            prec1,prec3,lossClassification = validate(val_loader, model, criterion,criterion2,modality)
-            writer.add_scalar('data/top1_validation', prec1, epoch)
-            writer.add_scalar('data/top3_validation', prec3, epoch)
+            acc1,acc3,lossClassification = validate(val_loader, model, criterion,criterion2,modality)
+            writer.add_scalar('data/top1_validation', acc1, epoch)
+            writer.add_scalar('data/top3_validation', acc3, epoch)
             writer.add_scalar('data/classification_loss_validation', lossClassification, epoch)
             scheduler.step(lossClassification)
-        # remember best prec@1 and save checkpoint
+        # remember best acc@1 and save checkpoint
         
-        is_best = prec1 >= best_prec1
-        best_prec1 = max(prec1, best_prec1)
-#        best_in_existing_learning_rate = max(prec1, best_in_existing_learning_rate)
+        is_best = acc1 >= best_acc1
+        best_acc1 = max(acc1, best_acc1)
+#        best_in_existing_learning_rate = max(acc1, best_in_existing_learning_rate)
 #        
-#        if best_in_existing_learning_rate > prec1 + 1:
+#        if best_in_existing_learning_rate > acc1 + 1:
 #            learning_rate_index = learning_rate_index 
 #            best_in_existing_learning_rate = 0        
 
@@ -357,7 +357,7 @@ def main():
                     'epoch': epoch + 1,
                     'arch': args.arch,
                     'state_dict': model.state_dict(),
-                    'best_prec1': best_prec1,
+                    'best_acc1': best_acc1,
                     'best_loss': best_loss,
                     'optimizer' : optimizer.state_dict(),
                 }, is_best, checkpoint_name, saveLocation)
@@ -367,7 +367,7 @@ def main():
         'epoch': epoch + 1,
         'arch': args.arch,
         'state_dict': model.state_dict(),
-        'best_prec1': best_prec1,
+        'best_acc1': best_acc1,
         'best_loss': best_loss,
         'optimizer' : optimizer.state_dict(),
     }, is_best, checkpoint_name, saveLocation)
@@ -451,8 +451,8 @@ def build_model_continue():
     optimizer.load_state_dict(params['optimizer'])
     
     startEpoch = params['epoch']
-    best_prec = params['best_prec1']
-    return model, startEpoch, optimizer, best_prec
+    best_acc = params['best_acc1']
+    return model, startEpoch, optimizer, best_acc
 
 
 
@@ -500,9 +500,9 @@ def train(train_loader, model, criterion, criterion2, optimizer, epoch,modality)
 #        targetRank=torch.tensor(range(args.num_seg)).repeat(input_vectors.shape[0]).cuda()
 #        rankingFC = nn.Linear(input_vectors.shape[-1], args.num_seg).cuda()
 #        out_rank = rankingFC(input_vectors_rank)
-        prec1, prec3 = accuracy(output.data, targets, topk=(1, 3))
-        acc_mini_batch += prec1.item()
-        acc_mini_batch_top3 += prec3.item()
+        acc1, acc3 = accuracy(output.data, targets, topk=(1, 3))
+        acc_mini_batch += acc1.item()
+        acc_mini_batch_top3 += acc3.item()
         
         lossClassification = criterion(output, targets)
         
@@ -532,7 +532,7 @@ def train(train_loader, model, criterion, criterion2, optimizer, epoch,modality)
         if (i+1) % args.print_freq == 0:
             print('[%d] time: %.3f loss: %.4f' %(i,batch_time.avg,lossesClassification.avg))
           
-    print(' * Epoch: {epoch} Prec@1 {top1.avg:.3f} Prec@3 {top3.avg:.3f} Classification Loss {lossClassification.avg:.4f}\n'
+    print(' * Epoch: {epoch} acc@1 {top1.avg:.3f} acc@3 {top3.avg:.3f} Classification Loss {lossClassification.avg:.4f}\n'
           .format(epoch = epoch, top1=top1, top3=top3, lossClassification=lossesClassification))
           
     writer.add_scalar('data/classification_loss_training', lossesClassification.avg, epoch)
@@ -573,19 +573,19 @@ def validate(val_loader, model, criterion,criterion2,modality):
             lossClassification = criterion(output, targets)
     
             # measure accuracy and record loss
-            prec1, prec3 = accuracy(output.data, targets, topk=(1, 3))
+            acc1, acc3 = accuracy(output.data, targets, topk=(1, 3))
             
             lossesClassification.update(lossClassification.data.item(), output.size(0))
             
-            top1.update(prec1.item(), output.size(0))
-            top3.update(prec3.item(), output.size(0))
+            top1.update(acc1.item(), output.size(0))
+            top3.update(acc3.item(), output.size(0))
     
             # measure elapsed time
             batch_time.update(time.time() - end)
             end = time.time()
     
     
-        print(' * * Prec@1 {top1.avg:.3f} Prec@3 {top3.avg:.3f} Classification Loss {lossClassification.avg:.4f}\n' 
+        print(' * * acc@1 {top1.avg:.3f} acc@3 {top3.avg:.3f} Classification Loss {lossClassification.avg:.4f}\n' 
               .format(top1=top1, top3=top3, lossClassification=lossesClassification))
 
     return top1.avg, top3.avg, lossesClassification.avg
@@ -659,7 +659,7 @@ def adjust_learning_rate4(optimizer, learning_rate_index):
         param_group['lr'] = lr
         
 def accuracy(output, target, topk=(1,)):
-    """Computes the precision@k for the specified values of k"""
+    """Computes the accuracy@k for the specified values of k"""
     maxk = max(topk)
     batch_size = target.size(0)
 
