@@ -350,7 +350,7 @@ def main():
 #            best_in_existing_learning_rate = 0        
 
         if (epoch + 1) % args.save_freq == 0:
-            checkpoint_name = "%03d_%s" % (epoch + 1, "checkpoint.pth.tar")
+            checkpoint_name = "%03d_%s" % (epoch , "checkpoint.pth.tar")
             if is_best:
                 print("Model son iyi olarak kaydedildi")
                 save_checkpoint({
@@ -403,7 +403,7 @@ def build_model():
     elif args.dataset=='window':
         print('model path is: %s' %(model_path))
         model = models.__dict__[args.arch](modelPath=model_path, num_classes=3, length=args.num_seg)
-    elif 'cvpr' in args.dataset: #FIXME
+    elif 'cvpr' in args.dataset: # TODO for semi
         print('model path is: %s' %(model_path))
         model = models.__dict__[args.arch](modelPath=model_path, num_classes=6, length=args.num_seg)
     
@@ -472,7 +472,7 @@ def train(train_loader, model, criterion, criterion2, optimizer, epoch,modality)
     acc_mini_batch = 0.0
     acc_mini_batch_top3 = 0.0
     totalSamplePerIter=0
-    for i, (inputs, targets) in enumerate(train_loader):
+    for i, (_, inputs, targets) in enumerate(train_loader):
         if modality == "rgb" or modality == "pose":
             if "3D" in args.arch or "r2plus1d" in args.arch or 'slowfast' in args.arch:
                 inputs=inputs.view(-1,length,3,input_size,input_size).transpose(1,2)
@@ -548,7 +548,7 @@ def validate(val_loader, model, criterion,criterion2,modality):
 
     end = time.time()
     with torch.no_grad():
-        for i, (inputs, targets) in enumerate(val_loader):
+        for i, (_, inputs, targets) in enumerate(val_loader):
             if modality == "rgb" or modality == "pose":
                 if "3D" in args.arch or "r2plus1d" in args.arch or 'slowfast' in args.arch:
                     inputs=inputs.view(-1,length,3,input_size,input_size).transpose(1,2)
