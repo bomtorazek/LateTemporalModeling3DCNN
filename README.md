@@ -29,7 +29,7 @@ https://1drv.ms/u/s!AqKP51Rjkz1Gaifd54VbdRBn6qM?e=7OxYLa
 
 [r2plus1d_34_clip32_ig65m_from_scratch-449a7af9.pth](https://github.com/moabitcoin/ig65m-pytorch/releases/download/v1.0.0/r2plus1d_34_clip32_ig65m_from_scratch-449a7af9.pth)를 다운 받아 
 
-weights/안에 넣었고 utils/model_path를 적절히 수정했습니다.
+weights/안에 넣었고 utils/model_path.py를 적절히 수정했습니다.
 
 ## Dataset Format
 In order to implement training and validation the list of training and validation samples should be created as txt files in \datasets\settings folder. 
@@ -76,9 +76,9 @@ datasets
 
 저희의 imageset처럼 settings 안에서 데이터를 나누는 방식입니다.
 
-datasets/settings/make_settings.py를 실행하시면 됩니다. (맨 위의 변수들을 적절히 수정해주세요.)
+datasets/settings/make_settings.py를 실행하시면 됩니다. (맨 위의 변수들 (trainvaltest부터 test_lbl_path까지) 을 적절히 수정해주세요.)
 
-ARID1.1_t1_validation_gt_pub.csv 파일은 레이블링 해주신 것을 참고하여 만들었습니다.
+최상위 폴더에 있는 ARID1.1_t1_validation_gt_pub.csv 파일은 레이블링 해주신 것을 참고하여 만들었습니다.
 
 아직 5-fold, semi(Track 2.2) 기능은 추가하지 않았습니다.
 
