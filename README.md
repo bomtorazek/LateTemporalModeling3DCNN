@@ -23,7 +23,7 @@ Later, please download the necessary files from the link, and copy them into the
 
 https://1drv.ms/u/s!AqKP51Rjkz1Gaifd54VbdRBn6qM?e=7OxYLa
 
-위의 링크에서 다운로드가 안 되시면 [해당 경로](\\10.99.160.32\Archive-Research\_temp\eungyosuh)에 제가 올려놨으니 다운 부탁드립니다.
+위의 링크에서 다운로드가 안 되시면 [\\10.99.160.32\Archive-Research\_temp\eungyosuh](\\10.99.160.32\Archive-Research\_temp\eungyosuh)에 제가 올려놨으니 다운 부탁드립니다.
 
 왠지는 모르겟지만 r2plus1d에 대한 weight가 없어서 [IG-65M unofficial repo](https://github.com/moabitcoin/ig65m-pytorch)에서
 
