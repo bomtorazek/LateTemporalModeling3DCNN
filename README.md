@@ -9,15 +9,9 @@ This the repository which implements late temporal modeling on top of the 3D CNN
 
 	#Environment by esuh
 	conda env create -f new_LateTemporalModeling3D.yml
-	
-	만약 위의 command가 작동하지 않는다면 아래 command를 실행한 후에 (중간에 오류가 납니다.)
-	my_requirements.txt의 commands를 실행해주세요.
-	
-	#Create the environment with the command
-	conda env create -f LateTemporalModeling3D.yml
 
 	#Then you can activate the environment with the command
-	conda activate LateTemporalModeling3D
+	conda activate 3dcnn
 
 Later, please download the necessary files from the link, and copy them into the main directory.
 
