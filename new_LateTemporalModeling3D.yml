@@ -1,4 +1,4 @@
-name: base
+name: 3dcnn
 channels:
   - defaults
 dependencies:
