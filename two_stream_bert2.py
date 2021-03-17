@@ -459,6 +459,8 @@ def build_model_continue():
 
 
 def train(train_loader, model, criterion, criterion2, optimizer, epoch,modality):
+    from tqdm import tqdm
+    print(f"start {epoch} train")
     batch_time = AverageMeter()
     lossesClassification = AverageMeter()
     top1 = AverageMeter()
@@ -474,7 +476,7 @@ def train(train_loader, model, criterion, criterion2, optimizer, epoch,modality)
     acc_mini_batch = 0.0
     acc_mini_batch_top3 = 0.0
     totalSamplePerIter=0
-    for i, (_, inputs, targets) in enumerate(train_loader):
+    for i, (_, inputs, targets) in enumerate(tqdm(train_loader)):
         if modality == "rgb" or modality == "pose":
             if "3D" in args.arch or "r2plus1d" in args.arch or 'slowfast' in args.arch:
                 inputs=inputs.view(-1,length,3,input_size,input_size).transpose(1,2)

@@ -130,7 +130,7 @@ python two_stream_bert2.py --split=1 --arch=rgb_resneXt3D64f101_bert10_FRMB --wo
 python two_stream2.py --split=1 --arch=rgb_resneXt3D64f101 --workers=2 --batch-size=8 --iter-size=16 --print-freq=400 --dataset=hmdb51 --lr=1e-2
 
 제가 사용한 command는 다음과 같습니다.
-python two_stream_bert2.py --split=0 --arch=rgb_r2plus1d_32f_34_bert10 --workers=2 --batch-size=4 --iter-size=16 --print-freq=400 --dataset=cvpr --lr=1e-5
+python two_stream_bert2.py --split=0 --arch=rgb_r2plus1d_32f_34_bert10 --workers=2 --batch-size=4 --iter-size=16 --print-freq=400 --dataset=cvpr --lr=1e-5 --gpu=2
 
 ```
 For multi-gpu training, comment the two lines below in two_stream_bert2.py
