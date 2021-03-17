@@ -14,7 +14,6 @@ import numpy as np
 
 
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"]='2'
 
 import torch
 import torch.nn as nn
@@ -85,6 +84,8 @@ parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='evaluate model on validation set')
 parser.add_argument('-c', '--continue', dest='contine', action='store_true',
                     help='evaluate model on validation set')
+parser.add_argument('--gpu', default='0', type=str,
+                    help='gpu id')
 
 best_acc1 = 0
 best_loss = 30
@@ -98,6 +99,7 @@ training_continue = False
 def main():
     global args, best_acc1,model,writer,best_loss, length, width, height, input_size, scheduler
     args = parser.parse_args()
+    os.environ["CUDA_VISIBLE_DEVICES"]=args.gpu
     training_continue = args.contine
     if '3D' in args.arch:
         if 'I3D' in args.arch or 'MFNET3D' in args.arch:
