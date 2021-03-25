@@ -31,7 +31,7 @@ import datasets
 import swats
 from opt.AdamW import AdamW
 from utils.model_path import rgb_3d_model_path_selection
-
+import treg
 
 model_names = sorted(name for name in models.__dict__
     if not name.startswith("__")
@@ -88,6 +88,10 @@ parser.add_argument('-c', '--continue', dest='contine', action='store_true',
 parser.add_argument('--light_enhanced', action='store_true', default=False)
 parser.add_argument('--gpu', default='0', type=str, help='gpu id')
 
+# For Temporal Augmentations
+parser.add_argument('--treg_mix_prob', default=1.0, type=float)
+parser.add_argument('--treg_mix_beta', default=1.0, type=float)
+parser.add_argument('--mix_type', default='None', choices=['None', 'cutmix', 'framecutmix', 'cubecutmix', 'mixup', 'fademixup', 'mcutmix', 'cutout', 'framecutout', 'cubecutout', 'mcutout'],
 
 best_acc1 = 0
 best_loss = 30
@@ -336,7 +340,7 @@ def main():
 #        if learning_rate_index > max_learning_rate_decay_count:
 #            break
 #        adjust_learning_rate(optimizer, epoch)
-        train(train_loader, model, criterion,criterion2, optimizer, epoch,modality)
+        train(train_loader, model, criterion,criterion2, optimizer, epoch, modality, args)
 
         # evaluate on validation set
         acc1 = 0.0
@@ -482,7 +486,7 @@ def build_model_continue():
 
 
 
-def train(train_loader, model, criterion, criterion2, optimizer, epoch,modality):
+def train(train_loader, model, criterion, criterion2, optimizer, epoch, modality, args):
     from tqdm import tqdm
     print(f"start {epoch} train")
     batch_time = AverageMeter()
@@ -512,11 +516,23 @@ def train(train_loader, model, criterion, criterion2, optimizer, epoch,modality)
         elif modality == "both":
             inputs=inputs.view(-1,5*length,input_size,input_size)
             
+
+         # ---------- Temporal Regularization
+        lam = 1.0
+        rand_index = None
+        r = np.random.rand(1)
+        if r < args.treg_mix_prob and args.mix_type != "None":
+            inputs, labels, lam, rand_index = treg.mix_regularization(inputs, labels, cfg, input_size, length)
+        #inputs = dutil.pack_pathway_output(cfg, inputs)
+        #inputs = [inputs]
+        # ----------
+
         if HALF:
             inputs = inputs.cuda().half()
         else:
             inputs = inputs.cuda()
         targets = targets.cuda()
+
         output, input_vectors, sequenceOut, maskSample = model(inputs)
         
 #        maskSample=maskSample.cuda()
