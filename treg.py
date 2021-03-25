@@ -56,7 +56,7 @@ def rand_out(size, spatial, temporal, mix):
     W = size[3]
     H = size[4]
 
-    if mix in ['cutout', 'mcutout']:
+    if mix in ['cutout']:
         cx = np.random.randint(W - spatial)
         cy = np.random.randint(H - spatial)
 
@@ -134,12 +134,7 @@ def mix_regularization(inputs, labels, cfg, input_size, length):
             bby2_t = np.around((1 - t_weight) * bby2b + t_weight * bby2e).astype(int)
 
             for taxis in range(inputs.size(2)):
-                inputs[:, :, taxis, bbx1_t[taxis]:bbx2_t[taxis], bby1_t[taxis]:bby2_t[taxis]] = inputs[rand_index, :,
-                                                                                                taxis,
-                                                                                                bbx1_t[taxis]:bbx2_t[
-                                                                                                    taxis],
-                                                                                                bby1_t[taxis]:bby2_t[
-                                                                                                    taxis]]
+                inputs[:, :, taxis, bbx1_t[taxis]:bbx2_t[taxis], bby1_t[taxis]:bby2_t[taxis]] = inputs[rand_index, :, taxis, bbx1_t[taxis]:bbx2_t[taxis], bby1_t[taxis]:bby2_t[taxis]]
 
         else:  # mixup: blending two videos
             if cfg.mix_type in ['mixup']:
@@ -148,41 +143,18 @@ def mix_regularization(inputs, labels, cfg, input_size, length):
                 adj = np.random.choice([-1, 0, 1]) * np.random.uniform(0, min(lam, 1.0 - lam))
                 fade = np.linspace(lam - adj, lam + adj, num=inputs.size(2))
                 for taxis in range(inputs.size(2)):
-                    inputs[:, :, taxis, :, :] = inputs[:, :, taxis, :, :] * fade[taxis] + inputs[rand_index, :, taxis,
-                                                                                          :, :] * (1. - fade[taxis])
+                    inputs[:, :, taxis, :, :] = inputs[:, :, taxis, :, :] * fade[taxis] + inputs[rand_index, :, taxis, :, :] * (1. - fade[taxis])
 
         # Change Labels for Validation Accuracy
         labels = labels if lam >= 0.5 else labels[rand_index]
 
-    elif cfg.mix_type in ['cutout', 'framecutout', 'cubecutout', 'mcutout']:
-        if cfg.mix_type in ['mcutout']:
-            # Sample Two BBoxs for Both Temporal Ends
-            bbt1b, bbx1b, bby1b, bbt2b, bbx2b, bby2b = rand_out(inputs.size(), cfg.input_size, cfg.length, cfg.mix_type)
-            bbt1e, bbx1e, bby1e, bbt2e, bbx2e, bby2e = rand_out(inputs.size(), cfg.input_size, cfg.length, cfg.mix_type)
+    elif cfg.mix_type in ['cutout', 'framecutout', 'cubecutout']:
+        # Sample Out Coordinates
+        bbt1, bbx1, bby1, bbt2, bbx2, bby2 = rand_out(inputs.size(), (input_size)//2, length, cfg.mix_type)
 
-            # Mix
-            t_weight = np.arange(inputs.size(2)) / (inputs.size(2) - 1)
-            bbx1_t = np.around((1 - t_weight) * bbx1b + t_weight * bbx1e).astype(int)
-            bbx2_t = np.around((1 - t_weight) * bbx2b + t_weight * bbx2e).astype(int)
-            bby1_t = np.around((1 - t_weight) * bby1b + t_weight * bby1e).astype(int)
-            bby2_t = np.around((1 - t_weight) * bby2b + t_weight * bby2e).astype(int)
-
-            # Delete out
-            zero_tensor = torch.zeros(inputs.size()).cuda()
-            for taxis in range(inputs.size(2)):
-                inputs[:, :, taxis, bbx1_t[taxis]:bbx2_t[taxis], bby1_t[taxis]:bby2_t[taxis]] = zero_tensor[:, :,
-                                                                                                taxis,
-                                                                                                bbx1_t[taxis]:bbx2_t[
-                                                                                                    taxis],
-                                                                                                bby1_t[taxis]:bby2_t[
-                                                                                                    taxis]]
-        else:
-            # Sample Out Coordinates
-            bbt1, bbx1, bby1, bbt2, bbx2, bby2 = rand_out(inputs.size(), cfg.input_size, cfg.length, cfg.mix_type)
-
-            # Delete out
-            zero_tensor = torch.zeros(inputs.size()).cuda()
-            inputs[:, :, bbt1:bbt2, bbx1:bbx2, bby1:bby2] = zero_tensor[:, :, bbt1:bbt2, bbx1:bbx2, bby1:bby2]
+        # Delete out
+        zero_tensor = torch.zeros(inputs.size()).cuda()
+        inputs[:, :, bbt1:bbt2, bbx1:bbx2, bby1:bby2] = zero_tensor[:, :, bbt1:bbt2, bbx1:bbx2, bby1:bby2]
 
     else:
         print('mixtype error')

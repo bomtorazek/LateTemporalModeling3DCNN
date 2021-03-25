@@ -91,7 +91,7 @@ parser.add_argument('--gpu', default='0', type=str, help='gpu id')
 # For Temporal Augmentations
 parser.add_argument('--treg_mix_prob', default=1.0, type=float)
 parser.add_argument('--treg_mix_beta', default=1.0, type=float)
-parser.add_argument('--mix_type', default='None', choices=['None', 'cutmix', 'framecutmix', 'cubecutmix', 'mixup', 'fademixup', 'mcutmix', 'cutout', 'framecutout', 'cubecutout', 'mcutout'],
+parser.add_argument('--mix_type', default='None', choices=['None', 'cutmix', 'framecutmix', 'cubecutmix', 'mixup', 'fademixup', 'mcutmix', 'cutout', 'framecutout', 'cubecutout'])
 
 best_acc1 = 0
 best_loss = 30
@@ -522,7 +522,8 @@ def train(train_loader, model, criterion, criterion2, optimizer, epoch, modality
         rand_index = None
         r = np.random.rand(1)
         if r < args.treg_mix_prob and args.mix_type != "None":
-            inputs, labels, lam, rand_index = treg.mix_regularization(inputs, labels, cfg, input_size, length)
+            inputs, targets, lam, rand_index = treg.mix_regularization(inputs, targets, args, input_size, length)
+
         #inputs = dutil.pack_pathway_output(cfg, inputs)
         #inputs = [inputs]
         # ----------
@@ -548,7 +549,12 @@ def train(train_loader, model, criterion, criterion2, optimizer, epoch, modality
         acc_mini_batch += acc1.item()
         acc_mini_batch_top3 += acc3.item()
         
-        lossClassification = criterion(output, targets)
+        # Compute the loss.
+        # ------------------------Temporal Regularization
+        if r < args.treg_mix_prob and args.mix_type in ["cutmix", "framecutmix", "cubecutmix", "mixup", "fademixup", "mcutmix"]:
+            lossClassification = criterion(output, targets) * lam + criterion(output, targets[rand_index]) * (1. - lam)
+        else:
+            lossClassification = criterion(output, targets)
         
         lossClassification = lossClassification / args.iter_size
         
@@ -582,6 +588,8 @@ def train(train_loader, model, criterion, criterion2, optimizer, epoch, modality
     writer.add_scalar('data/classification_loss_training', lossesClassification.avg, epoch)
     writer.add_scalar('data/top1_training', top1.avg, epoch)
     writer.add_scalar('data/top3_training', top3.avg, epoch)
+
+
 def validate(val_loader, model, criterion,criterion2,modality):
     batch_time = AverageMeter()
     lossesClassification = AverageMeter()
