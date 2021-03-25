@@ -86,7 +86,7 @@ parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
 parser.add_argument('-c', '--continue', dest='contine', action='store_true',
                     help='evaluate model on validation set')
 parser.add_argument('--light_enhanced', action='store_true', default=False)
-
+parser.add_argument('--gpu', default='0', type=str, help='gpu id')
 
 
 best_acc1 = 0
