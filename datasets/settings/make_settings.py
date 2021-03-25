@@ -7,8 +7,8 @@ trainvaltest = 'val' #  train or val or test
 modality = 'rgb' # rgb or flow
 dataset= 'cvpr' # or cvpr_le for light-enhanced data (not implemented yet)
 frame_path = '../cvpr_frames/' # or cvpr_le_frames
-train_lbl_path = '/home/esuh/data/cvpr/Track2.1/ARID1.1_t1_train_pub.csv'
-val_lbl_path = '/home/esuh/data/cvpr/Track2.1/ARID1.1_t1_validation_gt_pub.csv'
+train_lbl_path = '../ARID1.1_t1_train_pub.csv'
+val_lbl_path = '../ARID1.1_t1_validation_gt_pub.csv'
 test_lbl_path = '' #FIXME after 4/28
 lbl_path = {'train': train_lbl_path,'val': val_lbl_path, 'test': test_lbl_path}
 

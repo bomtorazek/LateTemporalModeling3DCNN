@@ -13,8 +13,8 @@ import shutil
 import numpy as np
 
 
-os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"]='2'
+#os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
+#os.environ["CUDA_VISIBLE_DEVICES"]='2'
 
 import torch
 import torch.nn as nn
@@ -85,6 +85,9 @@ parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='evaluate model on validation set')
 parser.add_argument('-c', '--continue', dest='contine', action='store_true',
                     help='evaluate model on validation set')
+parser.add_argument('--light_enhanced', action='store_true', default=False)
+
+
 
 best_acc1 = 0
 best_loss = 30
@@ -172,7 +175,10 @@ def main():
     elif args.dataset=='window':
         dataset='./datasets/window_frames'
     elif args.dataset=='cvpr':
-        dataset='./datasets/cvpr_frames'
+        if args.light_enhanced:
+            dataset='/data_hdd/hoseong/ARID_Enhanced/cvpr_frames_enhanced'
+        else:
+            dataset='/data_hdd/hoseong/ARID/cvpr_frames'
     elif args.dataset=='cvpr_le':
         dataset='./datasets/cvpr_le_frames'
     else:
@@ -190,6 +196,7 @@ def main():
             length=16
     else:
         length=1
+        
     # Data transforming
     if modality == "rgb" or modality == "pose":
         is_color = True
@@ -423,7 +430,16 @@ def build_model_validate():
         model=models.__dict__[args.arch](modelPath='', num_classes=101,length=args.num_seg)
     elif args.dataset=='hmdb51':
         model=models.__dict__[args.arch](modelPath='', num_classes=51,length=args.num_seg)
-   
+    elif args.dataset=='smtV2':
+        print('model path is: %s' %(model_path))
+        model = models.__dict__[args.arch](modelPath=model_path, num_classes=174, length=args.num_seg)
+    elif args.dataset=='window':
+        print('model path is: %s' %(model_path))
+        model = models.__dict__[args.arch](modelPath=model_path, num_classes=3, length=args.num_seg)
+    elif 'cvpr' in args.dataset: # TODO for semi
+        print('model path is: %s' %(model_path))
+        model = models.__dict__[args.arch](modelPath=model_path, num_classes=6, length=args.num_seg)
+
     if torch.cuda.device_count() > 1:
         model=torch.nn.DataParallel(model) 
 
@@ -441,7 +457,16 @@ def build_model_continue():
         model=models.__dict__[args.arch](modelPath='', num_classes=101,length=args.num_seg)
     elif args.dataset=='hmdb51':
         model=models.__dict__[args.arch](modelPath='', num_classes=51,length=args.num_seg)
-   
+    elif args.dataset=='smtV2':
+        print('model path is: %s' %(model_path))
+        model = models.__dict__[args.arch](modelPath=model_path, num_classes=174, length=args.num_seg)
+    elif args.dataset=='window':
+        print('model path is: %s' %(model_path))
+        model = models.__dict__[args.arch](modelPath=model_path, num_classes=3, length=args.num_seg)
+    elif 'cvpr' in args.dataset: # TODO for semi
+        print('model path is: %s' %(model_path))
+        model = models.__dict__[args.arch](modelPath=model_path, num_classes=6, length=args.num_seg)
+
     if torch.cuda.device_count() > 1:
         model=torch.nn.DataParallel(model) 
         
@@ -666,6 +691,7 @@ def accuracy(output, target, topk=(1,)):
     _, pred = output.topk(maxk, 1, True, True)
     pred = pred.t()
     correct = pred.eq(target.view(1, -1).expand_as(pred))
+    correct = correct.contiguous()
 
     res = []
     for k in topk:
