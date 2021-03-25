@@ -54,8 +54,6 @@ def rgb_3d_model_path_selection(architecture_name):
                         model_path='./weights/resnext-101-64f-kinetics.pth'
                 else:
                     model_path='./weights/resnext-101-kinetics.pth'
-    elif 'r2plus1d' in architecture_name:
-        model_path = './weights/r2plus1d_34_clip32_ig65m_from_scratch-449a7af9.pth'
     elif "tsm" in architecture_name:
         #model_path='./weights/TSM_kinetics_RGB_resnet50_shift8_blockres_avg_segment8_e100_dense.pth'
         model_path='./weights/TSM_kinetics_RGB_resnet50_shift8_blockres_avg_segment16_e50.pth'
@@ -63,6 +61,5 @@ def rgb_3d_model_path_selection(architecture_name):
         model_path='./weights/rep_flow_kinetics.pth'
     elif 'slowfast' in architecture_name:
         model_path='./weights/SLOWFAST_8x8_R50_torch.pth'
-    else:
-        raise ValueError("not appropriate arc name")
+
     return model_path

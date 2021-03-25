@@ -23,13 +23,16 @@ Later, please download the necessary files from the link, and copy them into the
 
 https://1drv.ms/u/s!AqKP51Rjkz1Gaifd54VbdRBn6qM?e=7OxYLa
 
-위의 링크에서 다운로드가 안 되시면 [해당 경로](\\10.99.160.32\Archive-Research\_temp\eungyosuh)에 제가 올려놨으니 다운 부탁드립니다.
+위의 링크에서 다운로드가 안 되시면 [\\\10.99.160.32\Archive-Research\\_temp\eungyosuh]에 제가 올려놨으니 다운 부탁드립니다.
 
-왠지는 모르겟지만 r2plus1d에 대한 weight가 없어서 [IG-65M unofficial repo](https://github.com/moabitcoin/ig65m-pytorch)에서
+~~왠지는 모르겟지만 r2plus1d에 대한 weight가 없어서 [IG-65M unofficial repo](https://github.com/moabitcoin/ig65m-pytorch)에서~~
 
-[r2plus1d_34_clip32_ig65m_from_scratch-449a7af9.pth](https://github.com/moabitcoin/ig65m-pytorch/releases/download/v1.0.0/r2plus1d_34_clip32_ig65m_from_scratch-449a7af9.pth)를 다운 받아 
+~~[r2plus1d_34_clip32_ig65m_from_scratch-449a7af9.pth]~(https://github.com/moabitcoin/ig65m-pytorch/releases/download/v1.0.0/r2plus1d_34_clip32_ig65m_from_scratch-449a7af9.pth)를 다운 받아~~
 
-weights/안에 넣었고 utils/model_path.py를 적절히 수정했습니다.
+~~weights/안에 넣었고 utils/model_path.py를 적절히 수정했습니다.~~
+
+>코드를 보니 ./models/r2plus1d/resnet.py 에서 자동으로 url로부터 위와 동일한 weight를 받아옵니다. (thanks to 회희님) 취소선 부분은 하실 필요 없습니다.
+
 
 ## Dataset Format
 In order to implement training and validation the list of training and validation samples should be created as txt files in \datasets\settings folder. 
@@ -130,7 +133,9 @@ python two_stream_bert2.py --split=1 --arch=rgb_resneXt3D64f101_bert10_FRMB --wo
 python two_stream2.py --split=1 --arch=rgb_resneXt3D64f101 --workers=2 --batch-size=8 --iter-size=16 --print-freq=400 --dataset=hmdb51 --lr=1e-2
 
 제가 사용한 command는 다음과 같습니다.
-python two_stream_bert2.py --split=0 --arch=rgb_r2plus1d_32f_34_bert10 --workers=2 --batch-size=4 --iter-size=16 --print-freq=400 --dataset=cvpr --lr=1e-5
+python two_stream_bert2.py --split=0 --arch=rgb_r2plus1d_32f_34_bert10 --workers=2 --batch-size=4 --iter-size=16 --print-freq=400 --dataset=cvpr --lr=1e-5 --gpu=2
+
+python two_stream_bert2.py --split=0 --arch=rgb_r2plus1d_64f_34_bert10 --workers=2 --batch-size=2 --iter-size=16 --print-freq=400 --dataset=cvpr --lr=1e-5 --gpu=1
 
 ```
 For multi-gpu training, comment the two lines below in two_stream_bert2.py
