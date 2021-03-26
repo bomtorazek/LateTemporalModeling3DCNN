@@ -3,7 +3,7 @@ from os import listdir
 from collections import defaultdict
 
 
-FOLD = 2
+FOLD = 5
 
 train_path = './cvpr/train_rgb_split0.txt'
 val_path = './cvpr/val_rgb_split0.txt'
@@ -20,15 +20,15 @@ with open(train_path, 'r') as f:
         inst_dict[instance].append([clip, frames, lbl])
 
 
-# with open(path2, 'r') as f:
-#     data = f.readlines()
-#     for row in data:
-#         lbl = row.split()[2]
-#         frames = row.split()[1]
-#         clip = row.split()[0]
-#         lbl_dict[int(lbl)].append([frames,clip])
-
-
+val_list = []
+with open(val_path, 'r') as f:
+    data = f.readlines()
+    for row in data:
+        lbl = row.split()[2]
+        frames = row.split()[1]
+        clip = row.split()[0]
+        val_list.append([clip,frames,lbl])
+                                     
 
 for fold in range(1,FOLD+1):
     t_cnt = [0]*6
@@ -45,9 +45,10 @@ for fold in range(1,FOLD+1):
                     for clip in inst_dict[inst]: # clip
                         # v_cnt[int(clip[2])] +=1
                         vf.write(f'{clip[0]} {clip[1]} {clip[2]}\n')
+            
+            for clip in val_list:
+                vf.write(f'{clip[0]} {clip[1]} {clip[2]}\n')
 
     # print([i/sum(t_cnt) for i in t_cnt])
     # print([(i+j)/(sum(t_cnt)+sum(v_cnt)) for i, j in zip(t_cnt, v_cnt)])
                                 
-                    
-                
