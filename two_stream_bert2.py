@@ -30,6 +30,7 @@ import datasets
 import swats
 from opt.AdamW import AdamW
 from utils.model_path import rgb_3d_model_path_selection
+from utils.RandAugment import RandAugment
 
 
 model_names = sorted(name for name in models.__dict__
@@ -47,7 +48,6 @@ parser.add_argument('--settings', metavar='DIR', default='./datasets/settings',
 #                    choices=["rgb", "flow"],
 #                    help='modality: rgb | flow')
 parser.add_argument('--dataset', '-d', default='hmdb51',
-                    choices=["ucf101", "hmdb51", "smtV2", "window", "cvpr", "cvpr_le"],
                     help='dataset: ucf101 | hmdb51 | smtV2')
 
 parser.add_argument('--arch', '-a', default='rgb_resneXt3D64f101_bert10_FRMB',
@@ -86,6 +86,8 @@ parser.add_argument('-c', '--continue', dest='contine', action='store_true',
                     help='evaluate model on validation set')
 parser.add_argument('--gpu', default='0', type=str,
                     help='gpu id')
+parser.add_argument('--randaug', default='', type=str,
+                    help='3_15 for n and m respectively')
 
 best_acc1 = 0
 best_loss = 30
@@ -124,6 +126,8 @@ def main():
     height = int(256 * scale)
     
     saveLocation="./checkpoint/"+args.dataset+"_"+args.arch+"_split"+str(args.split)
+    if args.randaug:
+        saveLocation += '_randaug_'+args.randaug
     if not os.path.exists(saveLocation):
         os.makedirs(saveLocation)
     writer = SummaryWriter(saveLocation)
@@ -175,8 +179,8 @@ def main():
         dataset='./datasets/window_frames'
     elif args.dataset=='cvpr':
         dataset='./datasets/cvpr_frames'
-    elif args.dataset=='cvpr_le':
-        dataset='./datasets/cvpr_le_frames'
+    elif args.dataset=='cvpr_dce':
+        dataset='./datasets/cvpr_dce_frames'
     else:
         print("No convenient dataset entered, exiting....")
         return 0
@@ -277,6 +281,11 @@ def main():
                 video_transforms.ToTensor(),
                 normalize,
             ])
+    if args.randaug:
+        rand_n = int(args.randaug.split('_')[0])
+        rand_m =int(args.randaug.split('_')[1])
+        train_transform.video_transforms.insert(0, RandAugment(rand_n, rand_m))
+        
 
     # data loading
     train_setting_file = "train_%s_split%d.txt" % (modality, args.split)
@@ -476,7 +485,7 @@ def train(train_loader, model, criterion, criterion2, optimizer, epoch,modality)
     acc_mini_batch = 0.0
     acc_mini_batch_top3 = 0.0
     totalSamplePerIter=0
-    for i, (_, inputs, targets) in enumerate(tqdm(train_loader)):
+    for i, (_, inputs, targets) in enumerate(tqdm(train_loader,position=0, leave=True)):
         if modality == "rgb" or modality == "pose":
             if "3D" in args.arch or "r2plus1d" in args.arch or 'slowfast' in args.arch:
                 inputs=inputs.view(-1,length,3,input_size,input_size).transpose(1,2)
@@ -618,50 +627,6 @@ class AverageMeter(object):
         self.count += n
         self.avg = self.sum / self.count
 
-def adjust_learning_rate(optimizer, epoch):
-    """Sets the learning rate to the initial LR decayed by 10 every 150 epochs"""
-
-    decay = 0.1 ** (sum(epoch >= np.array(args.lr_steps)))
-    lr = args.lr * decay
-    print("Current learning rate is %4.6f:" % lr)
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = lr
-        
-def adjust_learning_rate2(optimizer, epoch):
-    isWarmUp=epoch < warmUpEpoch
-    decayRate=0.2
-    if isWarmUp:
-        lr=args.lr*(epoch+1)/warmUpEpoch
-    else:
-        lr=args.lr*(1/(1+(epoch+1-warmUpEpoch)*decayRate))
-    
-    #decay = 0.1 ** (sum(epoch >= np.array(args.lr_steps)))
-    print("Current learning rate is %4.6f:" % lr)
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = lr
-        
-def adjust_learning_rate3(optimizer, epoch):
-    isWarmUp=epoch < warmUpEpoch
-    decayRate=0.97
-    if isWarmUp:
-        lr=args.lr*(epoch+1)/warmUpEpoch
-    else:
-        lr = args.lr * decayRate**(epoch+1-warmUpEpoch)
-    
-    #decay = 0.1 ** (sum(epoch >= np.array(args.lr_steps)))
-    print("Current learning rate is %4.6f:" % lr)
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = lr
-        
-def adjust_learning_rate4(optimizer, learning_rate_index):
-    """Sets the learning rate to the initial LR decayed by 10 every 150 epochs"""
-
-    decay = 0.1 ** learning_rate_index
-    lr = args.lr * decay
-    print("Current learning rate is %4.8f:" % lr)
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = lr
-        
 def accuracy(output, target, topk=(1,)):
     """Computes the accuracy@k for the specified values of k"""
     maxk = max(topk)

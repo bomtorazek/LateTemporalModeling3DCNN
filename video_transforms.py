@@ -97,6 +97,7 @@ class Normalize(object):
     def __call__(self, tensor):
         # TODO: make efficient
         torch_mean = torch.tensor([[self.mean]]).view(-1,1,1).float()
+        print(torch_mean.shape, "torch_eman")
         torch_std = torch.tensor([[self.std]]).view(-1,1,1).float()
         tensor2 = (tensor - torch_mean) / torch_std
         # for t, m, s in zip(tensor, self.mean, self.std):
