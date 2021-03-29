@@ -5,11 +5,13 @@
 *.tar
 *.pt
 *.csv
+*.sh
 
 **/__pycache__
 
 /checkpoint
 /datasets/hmdb51_frames
+/datasets/*frames
 
 /runs
 
