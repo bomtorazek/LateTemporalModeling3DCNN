@@ -264,7 +264,7 @@ class RandAugment:
             val = (float(self.m) / 30) * float(maxval - minval) + minval
             
             if self.is_temp:
-                delta = np.random.uniform(0, 0.5 × val)
+                delta = np.random.uniform(0, 0.5 * val)
                 M1 = val - delta
                 M2 = val + delta
                 M = np.linspace(M1,M2,frames)
