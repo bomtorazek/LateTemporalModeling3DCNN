@@ -93,7 +93,7 @@ def main():
         return
 
     for epoch in range(startEpoch, args.epochs):
-        learn.train(train_loader, model, criterion, optimizer, epoch, modality, args, length, input_size)
+        learn.train(train_loader, model, criterion, optimizer, epoch, modality, args, length, input_size, writer)
 
         # evaluate on validation set
         acc1 = 0.0

@@ -3,7 +3,7 @@ import time
 from two_stream_bert import utils, treg
 from tqdm import tqdm
 
-def train(train_loader, model, criterion, optimizer, epoch, modality, args, length, input_size):
+def train(train_loader, model, criterion, optimizer, epoch, modality, args, length, input_size, writer):
     print(f"start {epoch} train")
     batch_time = utils.AverageMeter()
     lossesClassification = utils.AverageMeter()
@@ -67,6 +67,7 @@ def train(train_loader, model, criterion, optimizer, epoch, modality, args, leng
         loss_mini_batch_classification += lossClassification.data.item()
         totalLoss.backward()
         totalSamplePerIter +=  output.size(0)
+        
         if (i+1) % args.iter_size == 0:
             # compute gradient and do SGD step
             optimizer.step()
