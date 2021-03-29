@@ -12,7 +12,7 @@ def get_args():
     ### Dataset
     #parser.add_argument('--data', metavar='DIR', default='./datasets/ucf101_frames',help='path to dataset')
     parser.add_argument('--settings', metavar='DIR', default='./datasets/settings',
-                        help='path to datset setting files')
+                        help='path to dataset setting files')
     #parser.add_argument('--modality', '-m', metavar='MODALITY', default='rgb',
     #                    choices=["rgb", "flow"], help='modality: rgb | flow')
     parser.add_argument('--dataset', '-d', default='hmdb51',
@@ -22,6 +22,7 @@ def get_args():
     parser.add_argument('--arch', '-a', default='rgb_resneXt3D64f101_bert10_FRMB', choices=model_names,
                         help='model architecture: ' + ' | '.join(model_names) + ' (default: rgb_resneXt3D64f101_bert10_FRMB)')
     parser.add_argument('--light_enhanced', action='store_true', default=False)
+    parser.add_argument('--save_dir', metavar='DIR', default='./checkpoint',help='path to save checkpoints')
 
     ### Training
     parser.add_argument('--epochs', default=200, type=int, metavar='N',
