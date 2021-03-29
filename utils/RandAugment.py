@@ -250,21 +250,30 @@ class CutoutDefault(object):
 
 
 class RandAugment:
-    def __init__(self, n, m):
+    def __init__(self, n, m, is_temp):
         self.n = n
         self.m = m      # [0, 30]
+        self.is_temp = is_temp
         self.augment_list = augment_list()
 
     def __call__(self, clip):
         ops = random.choices(self.augment_list, k=self.n)
         frames = int(clip.shape[2]/3)
+
         for op, minval, maxval in ops:
             val = (float(self.m) / 30) * float(maxval - minval) + minval
+            
+            if self.is_temp:
+                delta = np.random.uniform(0, 0.5 × val)
+                M1 = val - delta
+                M2 = val + delta
+                M = np.linspace(M1,M2,frames)
+            
             img_list = []
             for f_ in range(frames): 
                 img = clip[:,:, f_*3:(f_+1)*3] # (128,170,192) to (128,170,3) * 64
                 img = Image.fromarray(img)
-                img = op(img, val)
+                img = op(img, val) if not self.is_temp else op(img, M[f_])
                 img = np.asarray(img)
                 img_list.append(img)
             clip = np.concatenate(img_list,axis =2)

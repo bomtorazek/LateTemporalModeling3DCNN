@@ -145,5 +145,10 @@ def get_transforms(input_size, scale_ratios, clip_mean, clip_std, args):
                 video_transforms.ToTensor(),
                 normalize,
             ])
+    if args.randaug:
+        rand_n = int(args.randaug.split('_')[0])
+        rand_m =int(args.randaug.split('_')[1])
+        is_temp = True if 't' in args.randaug else False
+        train_transform.video_transforms.insert(0, RandAugment(rand_n, rand_m, is_temp))
 
     return train_transform, val_transform

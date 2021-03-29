@@ -53,6 +53,7 @@ def get_args():
     parser.add_argument('--treg_mix_prob', default=1.0, type=float)
     parser.add_argument('--treg_mix_beta', default=1.0, type=float)
     parser.add_argument('--mix_type', default='None', choices=['None', 'cutmix', 'framecutmix', 'cubecutmix', 'mixup', 'fademixup', 'mcutmix', 'cutout', 'framecutout', 'cubecutout'])
+    parser.add_argument('--randaug', default='', type=str,help='3_15_t for n and m respectively, add _t if randaug-t')
 
     args = parser.parse_args()
     return args

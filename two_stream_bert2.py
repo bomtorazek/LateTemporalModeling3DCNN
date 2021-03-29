@@ -27,6 +27,8 @@ def main():
     input_size, width, height = data_prep.get_size(args)
 
     saveLocation = args.save_dir + "/" + args.dataset + "_" + args.arch + "_split" + str(args.split) + "_mixtype_" + str(args.mix_type)
+    if args.randaug:
+        saveLocation += '_randaug_'+args.randaug
 
     if not os.path.exists(saveLocation):
         os.makedirs(saveLocation)
