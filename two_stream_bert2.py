@@ -89,7 +89,7 @@ def main():
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.workers, pin_memory=True)
 
     if args.evaluate:
-        acc1,acc3,lossClassification = validate(val_loader, model, criterion,criterion2,modality)
+        acc1,acc3,lossClassification = learn.validate(val_loader, model, criterion, modality, args, length, input_size)
         return
 
     for epoch in range(startEpoch, args.epochs):
@@ -99,7 +99,7 @@ def main():
         acc1 = 0.0
         lossClassification = 0
         if (epoch + 1) % args.save_freq == 0:
-            acc1,acc3,lossClassification = learn.validate(val_loader, model, criterion, modality)
+            acc1,acc3,lossClassification = learn.validate(val_loader, model, criterion, modality, args, length, input_size)
             writer.add_scalar('data/top1_validation', acc1, epoch)
             writer.add_scalar('data/top3_validation', acc3, epoch)
             writer.add_scalar('data/classification_loss_validation', lossClassification, epoch)
