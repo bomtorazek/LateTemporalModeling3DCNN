@@ -8,7 +8,7 @@ This the repository which implements late temporal modeling on top of the 3D CNN
 	#For the installation, you need to install conda. The environment may contain also unnecessary packages but we want to give complete environment that we are using. 
 
 	#Environment by esuh
-	conda env create -f new_LateTemporalModeling3D.yml
+	conda env create -f new_LateTemporalModeling3D.yml (prefix 수정 필요)
 	
 	만약 위의 command가 작동하지 않는다면 아래 command를 실행한 후에 (중간에 오류가 납니다.)
 	my_requirements.txt의 commands를 실행해주세요.
@@ -24,14 +24,6 @@ Later, please download the necessary files from the link, and copy them into the
 https://1drv.ms/u/s!AqKP51Rjkz1Gaifd54VbdRBn6qM?e=7OxYLa
 
 위의 링크에서 다운로드가 안 되시면 [\\\10.99.160.32\Archive-Research\\_temp\eungyosuh]에 제가 올려놨으니 다운 부탁드립니다.
-
-~~왠지는 모르겟지만 r2plus1d에 대한 weight가 없어서 [IG-65M unofficial repo](https://github.com/moabitcoin/ig65m-pytorch)에서~~
-
-~~[r2plus1d_34_clip32_ig65m_from_scratch-449a7af9.pth]~(https://github.com/moabitcoin/ig65m-pytorch/releases/download/v1.0.0/r2plus1d_34_clip32_ig65m_from_scratch-449a7af9.pth)를 다운 받아~~
-
-~~weights/안에 넣었고 utils/model_path.py를 적절히 수정했습니다.~~
-
->코드를 보니 ./models/r2plus1d/resnet.py 에서 자동으로 url로부터 위와 동일한 weight를 받아옵니다. (thanks to 회희님) 취소선 부분은 하실 필요 없습니다.
 
 
 ## Dataset Format
@@ -79,11 +71,11 @@ datasets
 
 저희의 imageset처럼 settings 안에서 데이터를 나누는 방식입니다.
 
-datasets/settings/make_settings.py를 실행하시면 됩니다. (맨 위의 변수들 (trainvaltest부터 test_lbl_path까지) 을 적절히 수정해주세요.)
-
 최상위 폴더에 있는 ARID1.1_t1_validation_gt_pub.csv 파일은 레이블링 해주신 것을 참고하여 만들었습니다.
 
-아직 5-fold, semi(Track 2.2) 기능은 추가하지 않았습니다.
+아직 semi(Track 2.2) 기능은 추가하지 않았습니다.
+
+split{나누는 fold 수}{몇 번째 fold인지}의 규칙으로 되어 있습니다. 예를 들어 fold51면 5-fold cross validation에서 첫 번째를 가져온 겁니다.
 
 ## Training of the dataset
 There are two seperate training files called two_stream2.py and two_stream_bert2.py. These are almost identical two training files. Select the first for SGD training and select the second for ADAMW trainings. 
@@ -137,6 +129,7 @@ python two_stream_bert2.py --split=0 --arch=rgb_r2plus1d_32f_34_bert10 --workers
 
 python two_stream_bert2.py --split=0 --arch=rgb_r2plus1d_64f_34_bert10 --workers=2 --batch-size=2 --iter-size=16 --print-freq=400 --dataset=cvpr --lr=1e-5 --gpu=1
 
+python two_stream_bert2.py --split=51 --arch=rgb_r2plus1d_64f_34_bert10 --workers=4 --batch-size=2 --iter-size=16 --print-freq=400 --dataset=cvpr --lr=1e-5 --gpu=2 --randaug=3_15
 ```
 For multi-gpu training, comment the two lines below in two_stream_bert2.py
 
