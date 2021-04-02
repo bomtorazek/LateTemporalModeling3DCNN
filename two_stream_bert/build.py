@@ -1,4 +1,5 @@
 from utils.model_path import rgb_3d_model_path_selection
+from two_stream_bert import optimization
 import models
 import torch
 
@@ -94,7 +95,7 @@ def build_model_continue(args):
         
     model.load_state_dict(params['state_dict'])
     model = model.cuda()
-    optimizer = AdamW(model.parameters(), lr= args.lr, weight_decay=args.weight_decay)
+    optimizer = optimization.get_optimizer(model, args)
     optimizer.load_state_dict(params['optimizer'])
     
     startEpoch = params['epoch']
