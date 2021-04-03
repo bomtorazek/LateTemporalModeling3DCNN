@@ -10,9 +10,9 @@ def get_dataset(args):
         dataset='./datasets/window_frames'
     elif args.dataset=='cvpr':
         if args.light_enhanced:
-            dataset='/data_hdd/hoseong/ARID_Enhanced/cvpr_frames_enhanced'
+            dataset='./datasets/cvpr_frames_enhanced'
         else:
-            dataset='/data_hdd/hoseong/ARID/cvpr_frames'
+            dataset='./datasets/cvpr_frames'
     elif args.dataset=='cvpr_le':
         dataset='./datasets/cvpr_le_frames'
     else:

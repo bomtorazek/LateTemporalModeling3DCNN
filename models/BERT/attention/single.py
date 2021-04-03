@@ -15,7 +15,8 @@ class Attention(nn.Module):
                  / math.sqrt(query.size(-1))
 
         if mask is not None:
-            scores = scores.masked_fill(mask == 0, -1e9)
+            masking_value = -1e9 if scores.dtype == torch.float32 else -1e4
+            scores = scores.masked_fill(mask == 0, masking_value) 
 
         p_attn = F.softmax(scores, dim=-1)
 

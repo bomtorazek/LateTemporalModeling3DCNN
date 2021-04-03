@@ -57,6 +57,9 @@ def main():
             if isinstance(layer, nn.BatchNorm2d):
                 layer.float()
         print("Model is converted to Half-Precision")
+    # mixed precision amp
+    scaler = torch.cuda.amp.GradScaler() if args.amp else None
+
 
     # define loss function (criterion) and learning rate scheduler
     criterion = nn.CrossEntropyLoss().cuda()
@@ -88,18 +91,19 @@ def main():
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.workers, pin_memory=True)
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.workers, pin_memory=True)
 
+    trainer = learn.Trainer(train_loader,val_loader, model, criterion, optimizer, modality, args, length, input_size, writer, scaler)
     if args.evaluate:
-        acc1,acc3,lossClassification = learn.validate(val_loader, model, criterion, modality, args, length, input_size)
+        acc1,acc3,lossClassification = trainer.validate()
         return
 
     for epoch in range(startEpoch, args.epochs):
-        learn.train(train_loader, model, criterion, optimizer, epoch, modality, args, length, input_size, writer)
+        trainer.train(epoch)
 
         # evaluate on validation set
         acc1 = 0.0
         lossClassification = 0
         if (epoch + 1) % args.save_freq == 0:
-            acc1,acc3,lossClassification = learn.validate(val_loader, model, criterion, modality, args, length, input_size)
+            acc1,acc3,lossClassification = trainer.validate()
             writer.add_scalar('data/top1_validation', acc1, epoch)
             writer.add_scalar('data/top3_validation', acc3, epoch)
             writer.add_scalar('data/classification_loss_validation', lossClassification, epoch)
