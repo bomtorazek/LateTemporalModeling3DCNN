@@ -24,7 +24,7 @@ def main():
     os.environ["CUDA_VISIBLE_DEVICES"]=args.gpu
     input_size, width, height = data_prep.get_size(args)
 
-    saveLocation = args.save_dir + "/" + args.dataset + "_" + args.arch + "_split" + str(args.split) + "_mixtype_" + str(args.mix_type)
+    saveLocation = args.save_dir + "/" + args.dataset + "_" + args.arch + "_split" + str(args.split) + "_mixtype_" + str(args.mix_type) + "_optimizer_" + str(args.optimizer)
     if args.randaug:
         saveLocation += '_randaug_'+args.randaug
 
