@@ -36,10 +36,11 @@ def get_dataset(args):
     elif args.dataset=='window':
         dataset='./datasets/window_frames'
     elif args.dataset=='cvpr':
-        if args.light_enhanced:
-            dataset='./datasets/cvpr_frames_enhanced'
-        else:
-            dataset='./datasets/cvpr_frames'
+        dataset='/data/hyeokjae/results/UG2-2021/optical_flow/tv-l1/Track2.1/raw'
+    elif args.dataset == 'cvpr_sid':
+        dataset='/data/hyeokjae/results/UG2-2021/optical_flow/tv-l1/Track2.1/sid'
+    elif args.dataset == 'cvpr_sid_sm':
+        dataset='/data/hyeokjae/results/UG2-2021/optical_flow/tv-l1/Track2.1/sid_smoothing'
     elif args.dataset=='cvpr_le':
         dataset='./datasets/cvpr_le_frames'
     else:

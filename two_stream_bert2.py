@@ -72,17 +72,17 @@ def main():
     train_transform, val_transform = data_prep.get_transforms(input_size, scale_ratios, clip_mean, clip_std, args)
 
     # data loading
-    train_setting_file = "train_%s_split%d.txt" % (modality, args.split)
-    train_split_file = os.path.join(args.settings, args.dataset, train_setting_file)
-    val_setting_file = "val_%s_split%d.txt" % (modality, args.split)
-    val_split_file = os.path.join(args.settings, args.dataset, val_setting_file)
+    train_setting_file = "train_rgb_split%d.txt" % (args.split)
+    train_split_file = os.path.join(args.settings, 'cvpr', train_setting_file)
+    val_setting_file = "val_rgb_split%d.txt" % (args.split)
+    val_split_file = os.path.join(args.settings, 'cvpr', val_setting_file)
     if not os.path.exists(train_split_file) or not os.path.exists(val_split_file):
         print("No split file exists in %s directory. Preprocess the dataset first" % (args.settings))
 
-    train_dataset = datasets.__dict__[args.dataset](root=dataset, source=train_split_file, phase="train", modality=modality, is_color=is_color,
+    train_dataset = datasets.__dict__['cvpr'](root=dataset, source=train_split_file, phase="train", modality=modality, is_color=is_color,
                                                     new_length=length, new_width=width, new_height=height, video_transform=train_transform, num_segments=args.num_seg)
     
-    val_dataset = datasets.__dict__[args.dataset](root=dataset, source=val_split_file, phase="val", modality=modality, is_color=is_color,
+    val_dataset = datasets.__dict__['cvpr'](root=dataset, source=val_split_file, phase="val", modality=modality, is_color=is_color,
                                                   new_length=length, new_width=width, new_height=height, video_transform=val_transform, num_segments=args.num_seg)
 
     print('{} samples found, {} train samples and {} test samples.'.format(len(val_dataset)+len(train_dataset), len(train_dataset), len(val_dataset)))

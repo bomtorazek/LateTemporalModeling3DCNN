@@ -2,6 +2,7 @@ import numpy as np
 import time
 from two_stream_bert import utils, treg
 from tqdm import tqdm
+import torch
 
 def train(train_loader, model, criterion, optimizer, epoch, modality, args, length, input_size, writer):
     print(f"start {epoch} train")
