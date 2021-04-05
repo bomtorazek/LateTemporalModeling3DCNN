@@ -3,7 +3,7 @@ from os.path import join
 from os import listdir
 import csv
 
-trainvaltest = 'val' #  train or val or test
+trainvaltest = 'train' #  train or val or test
 modality = 'rgb' # rgb or flow
 dataset= 'cvpr' # or cvpr_le for light-enhanced data (not implemented yet)
 frame_path = '../cvpr_frames/' # or cvpr_le_frames
