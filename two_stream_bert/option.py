@@ -31,6 +31,7 @@ def get_args():
                         metavar='N', help='mini-batch size (default: 8)')
     parser.add_argument('--iter-size', default=16, type=int,
                         metavar='I', help='iter size to reduce memory usage (default: 16)')
+    parser.add_argument('--optimizer', default='AdamW', choices=['Adam', 'AdamW', 'AdamP', 'MADGRAD'])
     parser.add_argument('--lr', '--learning-rate', default=1e-5, type=float,
                         metavar='LR', help='initial learning rate')
     parser.add_argument('--momentum', default=0.9, type=float, metavar='M',

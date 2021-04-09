@@ -14,9 +14,7 @@ from tensorboardX import SummaryWriter
 
 from torch.optim import lr_scheduler
 import datasets
-from opt.AdamW import AdamW
-from two_stream_bert import option, data_prep, build, utils, learn
-
+from two_stream_bert import option, data_prep, build, utils, learn, data_config, optimization
 
 def main():
     best_acc1 = 0
@@ -39,7 +37,7 @@ def main():
     if args.evaluate:
         print("Building validation model ... ")
         model = build.build_model_validate(args)
-        optimizer = AdamW(model.parameters(), lr= args.lr, weight_decay=args.weight_decay)
+        optimizer = optimization.get_optimizer(model, args)
     elif args.contine:
         model, startEpoch, optimizer, best_acc1 = build.build_model_continue(args)
         for param_group in optimizer.param_groups:
@@ -48,7 +46,7 @@ def main():
     else:
         print("Building model ... ")
         model = build.build_model(args)
-        optimizer = AdamW(model.parameters(), lr= args.lr, weight_decay=args.weight_decay)
+        optimizer = optimization.get_optimizer(model, args)
         startEpoch = 0
     print("Model %s is loaded. " % (args.arch))
 
@@ -66,7 +64,7 @@ def main():
     scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=5, verbose=True)
 
     # define dataset specification
-    dataset = data_prep.get_dataset(args)
+    dataset = data_config.get_dataset(args)
     length, modality, is_color, scale_ratios, clip_mean, clip_std = data_prep.get_data_stat(args)
 
     train_transform, val_transform = data_prep.get_transforms(input_size, scale_ratios, clip_mean, clip_std, args)
