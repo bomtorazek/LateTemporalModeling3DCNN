@@ -1,4 +1,4 @@
-#FIXME
+
 def get_dataset(args):
     if args.dataset=='ucf101':
         dataset='./datasets/ucf101_frames'
@@ -8,11 +8,13 @@ def get_dataset(args):
         dataset='./datasets/smtV2_frames'
     elif args.dataset=='window':
         dataset='./datasets/window_frames'
+    elif 'semi' in args.dataset:
+        dataset = './datasets/semi_cvpr_frames'
     elif args.dataset=='cvpr':
         if args.light_enhanced:
-            dataset='/data_hdd/hoseong/ARID_Enhanced/cvpr_frames_enhanced'
+            dataset='./datasets/cvpr_frames_enhanced'
         else:
-            dataset='/data_hdd/hoseong/ARID/cvpr_frames'
+            dataset='./datasets/cvpr_frames'
     elif args.dataset=='cvpr_le':
         dataset='./datasets/cvpr_le_frames'
     else:

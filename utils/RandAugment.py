@@ -259,7 +259,6 @@ class RandAugment:
     def __call__(self, clip):
         ops = random.choices(self.augment_list, k=self.n)
         frames = int(clip.shape[2]/3)
-
         for op, minval, maxval in ops:
             val = (float(self.m) / 30) * float(maxval - minval) + minval
             

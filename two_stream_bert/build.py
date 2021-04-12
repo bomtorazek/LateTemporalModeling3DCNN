@@ -32,14 +32,17 @@ def build_model(args):
     elif args.dataset=='window':
         print('model path is: %s' %(model_path))
         model = models.__dict__[args.arch](modelPath=model_path, num_classes=3, length=args.num_seg)
-    elif 'cvpr' in args.dataset: # TODO for semi
+    elif 'semi' in args.dataset: # 
+        print('model path is: %s' %(model_path))
+        model = models.__dict__[args.arch](modelPath=model_path, num_classes=5, length=args.num_seg)
+    elif 'cvpr' in args.dataset: # 
         print('model path is: %s' %(model_path))
         model = models.__dict__[args.arch](modelPath=model_path, num_classes=6, length=args.num_seg)
     
 
-    if torch.cuda.device_count() > 1:
-        model=torch.nn.DataParallel(model)
-    model = model.cuda()
+    # if torch.cuda.device_count() > 1:
+    #     model=torch.nn.DataParallel(model)
+    # model = model.cuda()
     
     return model
 
@@ -58,16 +61,19 @@ def build_model_validate(args):
     elif args.dataset=='window':
         print('model path is: %s' %(model_path))
         model = models.__dict__[args.arch](modelPath=model_path, num_classes=3, length=args.num_seg)
-    elif 'cvpr' in args.dataset: # TODO for semi
+    elif 'semi' in args.dataset: # 
+        print('model path is: %s' %(model_path))
+        model = models.__dict__[args.arch](modelPath=model_path, num_classes=5, length=args.num_seg)
+    elif 'cvpr' in args.dataset: 
         print('model path is: %s' %(model_path))
         model = models.__dict__[args.arch](modelPath=model_path, num_classes=6, length=args.num_seg)
 
-    if torch.cuda.device_count() > 1:
-        model=torch.nn.DataParallel(model) 
+    # if torch.cuda.device_count() > 1:
+    #     model=torch.nn.DataParallel(model) 
 
     model.load_state_dict(params['state_dict'])
-    model.cuda()
-    model.eval() 
+    # model.cuda()
+    # model.eval() 
     return model
 
 def build_model_continue(args):
@@ -86,7 +92,10 @@ def build_model_continue(args):
     elif args.dataset=='window':
         print('model path is: %s' %(model_path))
         model = models.__dict__[args.arch](modelPath=model_path, num_classes=3, length=args.num_seg)
-    elif 'cvpr' in args.dataset: # TODO for semi
+    elif 'semi' in args.dataset: # 
+        print('model path is: %s' %(model_path))
+        model = models.__dict__[args.arch](modelPath=model_path, num_classes=5, length=args.num_seg)
+    elif 'cvpr' in args.dataset: 
         print('model path is: %s' %(model_path))
         model = models.__dict__[args.arch](modelPath=model_path, num_classes=6, length=args.num_seg)
 
@@ -94,7 +103,7 @@ def build_model_continue(args):
         model=torch.nn.DataParallel(model) 
         
     model.load_state_dict(params['state_dict'])
-    model = model.cuda()
+    model = model.cuda() # FIXME if needed
     optimizer = optimization.get_optimizer(model, args)
     optimizer.load_state_dict(params['optimizer'])
     
