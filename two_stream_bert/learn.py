@@ -33,13 +33,36 @@ def train(train_loader, model, criterion, optimizer, epoch, modality, args, leng
         elif modality == "both":
             inputs = inputs.view(-1, 5*length, input_size, input_size)
             
-         # ---------- Temporal Regularization
+        # ---------- Inductive Priors for Label Change
+        # target --> [Run, Sit, Stand, Turn, Walk, Wave]
+        # Rewind Sit --> Stand / Rewind Stand --> Sit / Rewind Turn --> Turn / Rewind Wave --> Wave
+
+        if args.reverse_aug:
+            r = np.random.rand(1)
+            if r < 0.5:
+                for k in range(len(inputs)): # inputs = [2, 3, 64, 112, 112] / targets = [2]
+                    #print(inputs[k].size(), targets[k]) 
+                    if targets[k] == 1:
+                        targets[k] = 2
+                        #inputs[k] = inputs[k][:, ::-1, :, :]
+                        inputs[k] = torch.flip(inputs[k], (1,))
+                    elif targets[k] == 2:
+                        targets[k] = 1
+                        inputs[k] = torch.flip(inputs[k], (1,))
+                    elif targets[k] == 3 or targets[k] == 5:
+                        inputs[k] = torch.flip(inputs[k], (1,))
+                    else:
+                        pass
+        # ----------
+        
+        # ---------- Temporal Regularization
         lam = 1.0
         rand_index = None
         r = np.random.rand(1)
         if r < args.treg_mix_prob and args.mix_type != "None":
             inputs, targets, lam, rand_index = treg.mix_regularization(inputs, targets, args, input_size, length)
         # ----------
+
 
         if args.half_precision:
             inputs = inputs.cuda().half()

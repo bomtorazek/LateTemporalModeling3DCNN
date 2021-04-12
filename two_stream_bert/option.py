@@ -49,7 +49,7 @@ def get_args():
     parser.add_argument('-c', '--continue', dest='contine', action='store_true', help='continue training model')
     parser.add_argument('--gpu', default='0', type=str, help='gpu id')
     parser.add_argument('--half_precision', action='store_true', help='half precision training')
-
+    parser.add_argument('--reverse_aug', action='store_true', help='data augmentation with frame reversing')
 
     # For Temporal Augmentations
     parser.add_argument('--treg_mix_prob', default=1.0, type=float)

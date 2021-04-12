@@ -29,6 +29,8 @@ def main():
         saveLocation += '_' + args.lrs
     if args.randaug:
         saveLocation += '_randaug_'+args.randaug
+    if args.reverse_aug:
+        saveLocation += '_reverse_aug'
 
     if not os.path.exists(saveLocation):
         os.makedirs(saveLocation)
