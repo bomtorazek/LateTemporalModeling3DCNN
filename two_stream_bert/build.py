@@ -40,9 +40,9 @@ def build_model(args):
         model = models.__dict__[args.arch](modelPath=model_path, num_classes=6, length=args.num_seg)
     
 
-    # if torch.cuda.device_count() > 1:
-    #     model=torch.nn.DataParallel(model)
-    # model = model.cuda()
+    if torch.cuda.device_count() > 1:
+        model=torch.nn.DataParallel(model)
+    model = model.cuda()
     
     return model
 
@@ -68,12 +68,12 @@ def build_model_validate(args):
         print('model path is: %s' %(model_path))
         model = models.__dict__[args.arch](modelPath=model_path, num_classes=6, length=args.num_seg)
 
-    # if torch.cuda.device_count() > 1:
-    #     model=torch.nn.DataParallel(model) 
+    if torch.cuda.device_count() > 1:
+        model=torch.nn.DataParallel(model) 
 
     model.load_state_dict(params['state_dict'])
-    # model.cuda()
-    # model.eval() 
+    model.cuda()
+    model.eval() 
     return model
 
 def build_model_continue(args):
@@ -103,7 +103,7 @@ def build_model_continue(args):
         model=torch.nn.DataParallel(model) 
         
     model.load_state_dict(params['state_dict'])
-    model = model.cuda() # FIXME if needed
+    model = model.cuda() 
     optimizer = optimization.get_optimizer(model, args)
     optimizer.load_state_dict(params['optimizer'])
     

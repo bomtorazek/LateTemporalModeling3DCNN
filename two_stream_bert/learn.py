@@ -46,25 +46,20 @@ def train(train_loader,ul_train_loader, model, criterion, optimizer, epoch, moda
     acc_mini_batch_top3 = 0.0
     totalSamplePerIter=0
 
-    p_bar = tqdm(range(args.eval_step),
-                    disable=args.local_rank not in [-1, 0])
+    p_bar = tqdm(range(args.eval_step))
     for batch_idx in range(args.eval_step):
-        print(1,args.local_rank)
         try:
             _, inputs_x, targets_x = labeled_iter.next()
-            print(2,args.local_rank)
+   
         except:
             labeled_iter = iter(train_loader)
             _, inputs_x, targets_x = labeled_iter.next()
-            print(2,args.local_rank)
         
         try:
             _, (inputs_u_w, inputs_u_s), _ = unlabeled_iter.next()
-            print(3,args.local_rank)
         except:
             unlabeled_iter = iter(ul_train_loader)
             _, (inputs_u_w, inputs_u_s), _ = unlabeled_iter.next()
-            print(3,args.local_rank)
         
         if modality == "rgb" or modality == "pose":
             if "3D" in args.arch or "r2plus1d" in args.arch or 'slowfast' in args.arch:
@@ -94,19 +89,19 @@ def train(train_loader,ul_train_loader, model, criterion, optimizer, epoch, moda
         if r < args.treg_mix_prob and args.mix_type != "None":
             inputs_x, targets_x, lam, rand_index = treg.mix_regularization(inputs_x, targets_x, args, input_size, length)
         
-        print(4,args.local_rank)
+     
         ##---------------- interleave--------
         batch_size = inputs_x.shape[0]
         inputs = interleave(
-            torch.cat((inputs_x, inputs_u_w, inputs_u_s)), 2*args.mu+1).to(args.device)
-        targets_x = targets_x.to(args.device)
+            torch.cat((inputs_x, inputs_u_w, inputs_u_s)), 2*args.mu+1).cuda()
+        targets_x = targets_x.cuda()
         logits, _, _, _ = model(inputs) # inputs 3,3,64,112,112
         # output, input_vectors, sequenceOut, maskSample
         logits = de_interleave(logits, 2*args.mu+1) # logits >> [size*batch, class]
         logits_x = logits[:batch_size]
         logits_u_w, logits_u_s = logits[batch_size:].chunk(2)
         del logits
-        print(5,args.local_rank)
+        
         # -----------------Compute the loss.
         # -----------------Temporal Regularization
         if r < args.treg_mix_prob and args.mix_type in ["cutmix", "framecutmix", "cubecutmix", "mixup", "fademixup", "mcutmix"]:
@@ -115,7 +110,7 @@ def train(train_loader,ul_train_loader, model, criterion, optimizer, epoch, moda
         else:
             Lx = criterion(logits_x, targets_x, reduction='mean')
         
-        print(6 ,args.local_rank)
+        
         pseudo_label = torch.softmax(logits_u_w.detach()/args.T, dim=-1) # weak aug
         max_probs, targets_u = torch.max(pseudo_label, dim=-1) 
         mask = max_probs.ge(args.threshold).float() # masking
@@ -127,7 +122,7 @@ def train(train_loader,ul_train_loader, model, criterion, optimizer, epoch, moda
         Lu /= args.iter_size
         loss = loss / args.iter_size
         maskmean = mask.mean() /args.iter_size
-        print(7,args.local_rank)
+       
         
         ##  ------ train acc for HMDB51
         acc1, acc3 = utils.accuracy(logits_x.data, targets_x, topk=(1, 3))
@@ -145,7 +140,7 @@ def train(train_loader,ul_train_loader, model, criterion, optimizer, epoch, moda
         ## backprop
         totalLoss.backward()
         totalSamplePerIter +=  logits_x.size(0)
-        print(8,args.local_rank)
+       
         ## -----optimizer step
         if (batch_idx+1) % args.iter_size == 0:
             # compute gradient and do SGD step
@@ -169,7 +164,7 @@ def train(train_loader,ul_train_loader, model, criterion, optimizer, epoch, moda
             acc_mini_batch_top3 = 0.0
             totalSamplePerIter = 0.0
 
-        p_bar.set_description("Eph: {epoch}/{epochs:4}. It: {batch:4}/{iter:4}. LR: {lr:.4f}. L: {loss:.4f}. Lx: {loss_x:.4f}. Lu: {loss_u:.4f}. Mask: {mask:.2f}. ".format(
+        p_bar.set_description("Eph: {epoch}/{epochs:4}. It: {batch:4}/{iter:4}. LR: {lr:.4f}. L: {loss:.4f}. Lx: {loss_x:.4f}. Lu: {loss_u:.6f}. Mask: {mask:.2f}. ".format(
             epoch=epoch + 1,
             epochs=args.epochs,
             batch=batch_idx + 1,
@@ -192,16 +187,15 @@ def train(train_loader,ul_train_loader, model, criterion, optimizer, epoch, moda
 
 
 def validate(val_loader, model, criterion, modality, args, length, input_size):
-    if args.use_ema:
-        test_model = ema_model.ema 
-    else:
-        test_model = model
 
+    if args.use_ema:
+        from models.ema import ModelEMA
+        ema_model = ModelEMA(args, model, args.ema_decay)
+        model = ema_model.ema
 
     batch_time = utils.AverageMeter()
     lossesClassification = utils.AverageMeter()
     top1 = utils.AverageMeter()
-    top3 = utils.AverageMeter()
     # switch to evaluate mode
     model.eval()
 
@@ -236,14 +230,13 @@ def validate(val_loader, model, criterion, modality, args, length, input_size):
             lossesClassification.update(lossClassification.data.item(), output.size(0))
             
             top1.update(acc1.item(), output.size(0))
-            top3.update(acc3.item(), output.size(0))
     
             # measure elapsed time
             batch_time.update(time.time() - end)
             end = time.time()
     
     
-        print(' * * acc@1 {top1.avg:.3f} acc@3 {top3.avg:.3f} Classification Loss {lossClassification.avg:.4f}\n' 
-              .format(top1=top1, top3=top3, lossClassification=lossesClassification))
+        print(' * * acc@1 {top1.avg:.3f}  Classification Loss {lossClassification.avg:.4f}\n' 
+              .format(top1=top1,  lossClassification=lossesClassification))
 
-    return top1.avg, top3.avg, lossesClassification.avg
+    return top1.avg,  lossesClassification.avg

@@ -51,23 +51,19 @@ def get_args():
                         help='momentum (default: 0.9)')
     parser.add_argument('--nesterov', action='store_true', default=True,
                         help='use nesterov momentum')
-    parser.add_argument('--use-ema', action='store_true', default=True,
+    parser.add_argument('--use-ema', action='store_true', 
                         help='use EMA model')
     parser.add_argument('--ema-decay', default=0.999, type=float,
                         help='EMA decay rate')
     parser.add_argument('--weight-decay', '--wd', default=1e-3, type=float,
                         metavar='W', help='weight decay (default: 1e-3)')
-    parser.add_argument('--print-freq', default=400, type=int,
-                        metavar='N', help='print frequency (default: 400)')
     parser.add_argument('--save-freq', default=1, type=int,
                         metavar='N', help='save frequency (default: 1)')
     parser.add_argument('--num-seg', default=1, type=int,
                         metavar='N', help='Number of segments in dataloader (default: 1)')
     parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true', help='evaluate model on validation set')
     parser.add_argument('-c', '--continue', dest='contine', action='store_true', help='continue training model')
-    parser.add_argument('--gpu-id', default='0', type=str, help='gpu id')
-    parser.add_argument("--local_rank", type=int, default=-1,
-                        help="For distributed training: local_rank")
+    parser.add_argument('--gpu', default='0', type=str, help='gpu id')
     parser.add_argument('--half_precision', action='store_true', help='half precision training')
 
 
