@@ -104,6 +104,21 @@ def ReadSegmentFlow(path, offsets, new_height, new_width, new_length, is_color, 
     return clip_input, clip_name
 
 
+def AggregateRGBFlow(rgb, flow):
+    num_frame = int(rgb.shape[2] / 3)
+    sampled_list = []
+    for i in range(num_frame):
+        rgb_frame = rgb[:, :, 3 * i: 3 * i + 3]
+        flow_x_frame = flow[:, :, i, 0]
+        flow_y_frame = flow[:, :, 64 + i, 0]
+
+        rgb_frame = cv2.cvtColor(rgb_frame, cv2.COLOR_RGB2GRAY)
+        sampled_list.append(np.stack([rgb_frame, flow_x_frame, flow_y_frame], axis=-1))
+
+    clip_input = np.concatenate(sampled_list, axis=2)
+    return clip_input
+
+
 class cvpr(data.Dataset):
 
     def __init__(self,
@@ -146,7 +161,7 @@ class cvpr(data.Dataset):
                 self.name_pattern = "img_%05d.jpg"
             elif self.modality == "flow":
                 self.name_pattern = "flow_%s_%05d.jpg"
-
+        self.aggregate_rgb_flow = True
 
         self.is_color = is_color
         self.num_segments = num_segments
@@ -199,6 +214,17 @@ class cvpr(data.Dataset):
                                         self.name_pattern,
                                         duration
                                         )
+            if self.aggregate_rgb_flow:
+                flow_clip_input, clip_name = ReadSegmentFlow(path,
+                                            offsets,
+                                            self.new_height,
+                                            self.new_width,
+                                            self.new_length,
+                                            self.is_color,
+                                            "flow_%s_%05d.jpg",
+                                            duration
+                                            )
+                clip_input = AggregateRGBFlow(clip_input, flow_clip_input)
         elif self.modality == "flow":
             clip_input, clip_name = ReadSegmentFlow(path,
                                         offsets,
