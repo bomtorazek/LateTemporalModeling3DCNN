@@ -17,7 +17,7 @@ from tensorboardX import SummaryWriter
 
 import datasets
 import math
-from two_stream_bert import option, data_prep, build, utils, learn, data_config, optimization, lr_scheduler
+from two_stream_bert import option, data_prep, build, utils, learn_concat, learn_alter, data_config, optimization, lr_scheduler
 
 def main():
     best_acc1 = 0
@@ -27,7 +27,7 @@ def main():
     os.environ["CUDA_VISIBLE_DEVICES"]=args.gpu
     input_size, width, height = data_prep.get_size(args)
 
-    saveLocation = args.save_dir + "/" + args.dataset + "_" + args.arch + "_split" + str(args.split) + "_mixtype_" + str(args.mix_type)
+    saveLocation = args.save_dir + "/" + args.dataset + "_" + args.arch + "_split" + str(args.split) + "_mixtype_" + str(args.mix_type) + '_joint_' + str(args.threshold) + str(args.use_ema)
     if args.randaug:
         saveLocation += '_randaug_'+args.randaug
 
@@ -69,9 +69,10 @@ def main():
     
     print('{} samples found, {} train samples, {} unlabeled train samples, and {} test samples.'.format(len(val_dataset)+len(train_dataset) |len(ul_train_dataset), len(train_dataset),len(ul_train_dataset), len(val_dataset)))
 
+    ul_batch = int(args.batch_size * 0.5) if '64f' in args.arch else args.batch_size
     train_sampler = RandomSampler 
     train_loader = torch.utils.data.DataLoader(train_dataset, sampler=train_sampler(train_dataset), batch_size=args.batch_size, num_workers=args.workers, pin_memory=True, drop_last=True)
-    ul_train_loader = torch.utils.data.DataLoader(ul_train_dataset, sampler= train_sampler(ul_train_dataset), batch_size=args.batch_size * args.mu,num_workers=args.workers, pin_memory=True, drop_last= True)
+    ul_train_loader = torch.utils.data.DataLoader(ul_train_dataset, sampler= train_sampler(ul_train_dataset), batch_size= ul_batch,num_workers=args.workers, pin_memory=True, drop_last= True)
     val_loader = torch.utils.data.DataLoader(val_dataset, sampler=SequentialSampler(val_dataset), batch_size=args.batch_size, num_workers=args.workers, pin_memory=True)
 
 
@@ -103,19 +104,29 @@ def main():
 
 
     if args.evaluate:
-        acc1,lossClassification = learn.validate(val_loader, model, criterion, modality, args, length, input_size)
+        if '64f' in args.arch:
+            acc1,acc3, lossClassification = learn_alter.validate(val_loader, model, criterion, modality, args, length, input_size)
+        else:
+            acc1,acc3, lossClassification = learn_concat.validate(val_loader, model, criterion, modality, args, length, input_size)
         return
 
  
     model.zero_grad()
     for epoch in range(startEpoch, args.epochs):
-        learn.train(train_loader, ul_train_loader, model, criterion, optimizer, epoch, modality, args, length, input_size, args.writer, scheduler)
-
+        if '64f' in args.arch:
+            learn_alter.train(train_loader, ul_train_loader, model, criterion, optimizer, epoch, modality, args, length, input_size, args.writer, scheduler)
+        else:
+            learn_concat.train(train_loader, ul_train_loader, model, criterion, optimizer, epoch, modality, args, length, input_size, args.writer, scheduler)
+            
         # evaluate on validation set
         acc1 = 0.0
         lossClassification = 0
         if (epoch + 1) % args.save_freq == 0:
-            acc1,lossClassification = learn.validate(val_loader, model, criterion, modality, args, length, input_size)
+            if '64f' in args.arch:
+                acc1,acc3,lossClassification = learn_alter.validate(val_loader, model, criterion, modality, args, length, input_size)
+            else:
+                acc1,acc3,lossClassification = learn_concat.validate(val_loader, model, criterion, modality, args, length, input_size)
+
             args.writer.add_scalar('data/top1_validation', acc1, epoch)
             args.writer.add_scalar('data/classification_loss_validation', lossClassification, epoch)
        

@@ -1,5 +1,5 @@
 import video_transforms
-from utils.RandAugment_fixmatch import RandAugmentMC
+from utils.RandAugment import RandAugment
 
 def get_size(args):
     if '3D' in args.arch:
@@ -96,47 +96,6 @@ def get_data_stat(args):
     
     return length, modality, is_color, scale_ratios, clip_mean, clip_std
 
-
-
-
-class TransformFixMatch(object):
-    def __init__(self, input_size, scale_ratios, randaug, totensor, normalize):
-        randaug = randaug.split('_')
-        rand_n = int(randaug[0])
-        rand_m =int(randaug[1])
-
-        if totensor == 1:    
-            self.weak = video_transforms.Compose([
-                    video_transforms.MultiScaleCrop((input_size, input_size), scale_ratios),
-                    video_transforms.RandomHorizontalFlip(),
-                    video_transforms.ToTensor(),
-                    normalize,
-                ])
-            self.strong = video_transforms.Compose([
-                    video_transforms.MultiScaleCrop((input_size, input_size), scale_ratios),
-                    video_transforms.RandomHorizontalFlip(),
-                    RandAugmentMC(rand_n, rand_m),
-                    video_transforms.ToTensor(),
-                    normalize,
-                ])
-        else:
-            self.weak = video_transforms.Compose([
-                    video_transforms.MultiScaleCrop((input_size, input_size), scale_ratios),
-                    video_transforms.RandomHorizontalFlip(),
-                    video_transforms.ToTensor2(),
-                    normalize,
-                ])
-            self.strong = video_transforms.Compose([
-                    video_transforms.MultiScaleCrop((input_size, input_size), scale_ratios),
-                    video_transforms.RandomHorizontalFlip(),
-                    RandAugmentMC(rand_n, rand_m),
-                    video_transforms.ToTensor2(),
-                    normalize,
-                ])
-
-    def __call__(self, x):
-        return self.weak(x), self.strong(x)
-
 def get_transforms(input_size, scale_ratios, clip_mean, clip_std, args):
     normalize = video_transforms.Normalize(mean=clip_mean, std=clip_std)
 
@@ -147,8 +106,6 @@ def get_transforms(input_size, scale_ratios, clip_mean, clip_std, args):
                 video_transforms.ToTensor2(),
                 normalize,
             ])
-
-        unlabeled_train_transform = TransformFixMatch(input_size, scale_ratios,args.randaug, 2, normalize)
     
         val_transform = video_transforms.Compose([
                 video_transforms.CenterCrop((input_size)),
@@ -162,44 +119,16 @@ def get_transforms(input_size, scale_ratios, clip_mean, clip_std, args):
                 video_transforms.ToTensor(),
                 normalize,
             ])
-
-        unlabeled_train_transform = TransformFixMatch(input_size,scale_ratios, args.randaug, 1, normalize)
-        
+    
         val_transform = video_transforms.Compose([
                 video_transforms.CenterCrop((input_size)),
                 video_transforms.ToTensor(),
                 normalize,
             ])
-    
+    if args.randaug:
+        rand_n = int(args.randaug.split('_')[0])
+        rand_m =int(args.randaug.split('_')[1])
+        is_temp = True if 't' in args.randaug else False
+        train_transform.video_transforms.insert(0, RandAugment(rand_n, rand_m, is_temp))
 
-    return train_transform, unlabeled_train_transform, val_transform
-
-
-
-
-
-
-def get_transforms_semi(input_size, scale_ratios, clip_mean, clip_std, args):
-    normalize = video_transforms.Normalize(mean=clip_mean, std=clip_std)
-
-    if "3D" in args.arch and not ('I3D' in args.arch):
-
-        unlabeled_train_transform = TransformFixMatch(input_size, scale_ratios,args.randaug, 2, normalize)
-    
-        val_transform = video_transforms.Compose([
-                video_transforms.CenterCrop((input_size)),
-                video_transforms.ToTensor2(),
-                normalize,
-            ])
-    else:
-
-        unlabeled_train_transform = TransformFixMatch(input_size,scale_ratios, args.randaug, 1, normalize)
-        
-        val_transform = video_transforms.Compose([
-                video_transforms.CenterCrop((input_size)),
-                video_transforms.ToTensor(),
-                normalize,
-            ])
-    
-
-    return  unlabeled_train_transform, val_transform
+    return train_transform, val_transform

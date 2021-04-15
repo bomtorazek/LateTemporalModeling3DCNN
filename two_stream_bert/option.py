@@ -23,6 +23,8 @@ def get_args():
                         help='model architecture: ' + ' | '.join(model_names) + ' (default: rgb_resneXt3D64f101_bert10_FRMB)')
     parser.add_argument('--mu', default=3, type=int,
                         help='coefficient of unlabeled batch size')
+    parser.add_argument('--nu', default=1, type=int,
+                    help='coefficient of labeled batch size')
     parser.add_argument('--lambda-u', default=1, type=float,
                         help='coefficient of unlabeled loss')
     parser.add_argument('--T', default=1, type=float,
@@ -34,6 +36,8 @@ def get_args():
 
 
     ### Training
+    parser.add_argument('--epochs', default=200, type=int, metavar='N',
+                        help='number of total epochs to run')
     parser.add_argument('--total-steps', default=2**20, type=int,
                         help='number of total steps to run')
     parser.add_argument('--eval-step', default=1024, type=int,
@@ -57,15 +61,18 @@ def get_args():
                         help='EMA decay rate')
     parser.add_argument('--weight-decay', '--wd', default=1e-3, type=float,
                         metavar='W', help='weight decay (default: 1e-3)')
+    parser.add_argument('--print-freq', default=400, type=int,
+                        metavar='N', help='print frequency (default: 400)')
     parser.add_argument('--save-freq', default=1, type=int,
                         metavar='N', help='save frequency (default: 1)')
+    parser.add_argument('--save-every-eval', action = 'store_true',default = False)
     parser.add_argument('--num-seg', default=1, type=int,
                         metavar='N', help='Number of segments in dataloader (default: 1)')
     parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true', help='evaluate model on validation set')
     parser.add_argument('-c', '--continue', dest='contine', action='store_true', help='continue training model')
     parser.add_argument('--gpu', default='0', type=str, help='gpu id')
     parser.add_argument('--half_precision', action='store_true', help='half precision training')
-
+    parser.add_argument('--model-transfer', default = '', help='dir of a checkpoint to finetune')
 
     # For Temporal Augmentations
     parser.add_argument('--treg_mix_prob', default=1.0, type=float)

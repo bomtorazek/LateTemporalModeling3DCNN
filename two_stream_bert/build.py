@@ -2,8 +2,10 @@ from utils.model_path import rgb_3d_model_path_selection
 from two_stream_bert import optimization
 import models
 import torch
+import os
 
-def build_model(args):
+def build_model(args, finetune = False):
+
     modality=args.arch.split('_')[0]
     if modality == "rgb":
         model_path = rgb_3d_model_path_selection(args.arch)
@@ -39,6 +41,12 @@ def build_model(args):
         print('model path is: %s' %(model_path))
         model = models.__dict__[args.arch](modelPath=model_path, num_classes=6, length=args.num_seg)
     
+    if finetune:
+        modelLocation= args.model_transfer
+        model_path = os.path.join(modelLocation) 
+        params = torch.load(model_path)
+        print(modelLocation)
+        model.load_state_dict(params['state_dict'])
 
     if torch.cuda.device_count() > 1:
         model=torch.nn.DataParallel(model)

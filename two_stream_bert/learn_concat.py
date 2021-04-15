@@ -196,6 +196,7 @@ def validate(val_loader, model, criterion, modality, args, length, input_size):
     batch_time = utils.AverageMeter()
     lossesClassification = utils.AverageMeter()
     top1 = utils.AverageMeter()
+    top3 = utils.AverageMeter()
     # switch to evaluate mode
     model.eval()
 
@@ -230,13 +231,14 @@ def validate(val_loader, model, criterion, modality, args, length, input_size):
             lossesClassification.update(lossClassification.data.item(), output.size(0))
             
             top1.update(acc1.item(), output.size(0))
+            top3.update(acc1.item(), output.size(0))
     
             # measure elapsed time
             batch_time.update(time.time() - end)
             end = time.time()
     
     
-        print(' * * acc@1 {top1.avg:.3f}  Classification Loss {lossClassification.avg:.4f}\n' 
-              .format(top1=top1,  lossClassification=lossesClassification))
+        print(' * * acc@1 {top1.avg:.3f} acc@3 {top3.avg:.3f} Classification Loss {lossClassification.avg:.4f}\n' 
+              .format(top1=top1, top3=top3, lossClassification=lossesClassification))
 
-    return top1.avg,  lossesClassification.avg
+    return top1.avg, top3.avg, lossesClassification.avg
