@@ -150,7 +150,7 @@ def mix_regularization(inputs, labels, cfg, input_size, length):
 
     elif cfg.mix_type in ['cutout', 'framecutout', 'cubecutout']:
         # Sample Out Coordinates
-        bbt1, bbx1, bby1, bbt2, bbx2, bby2 = rand_out(inputs.size(), (input_size)//2, length, cfg.mix_type)
+        bbt1, bbx1, bby1, bbt2, bbx2, bby2 = rand_out(inputs.size(), (input_size)//2, length//2, cfg.mix_type)
 
         # Delete out
         zero_tensor = torch.zeros(inputs.size()).cuda()

@@ -32,6 +32,7 @@ def get_args():
     parser.add_argument('--iter-size', default=16, type=int,
                         metavar='I', help='iter size to reduce memory usage (default: 16)')
     parser.add_argument('--optimizer', default='AdamW', choices=['Adam', 'AdamW', 'AdamP', 'MADGRAD'])
+    parser.add_argument('--lrs', default='Plateau', choices=['Plateau', 'Cosine_Warmup'])
     parser.add_argument('--lr', '--learning-rate', default=1e-5, type=float,
                         metavar='LR', help='initial learning rate')
     parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
@@ -48,7 +49,7 @@ def get_args():
     parser.add_argument('-c', '--continue', dest='contine', action='store_true', help='continue training model')
     parser.add_argument('--gpu', default='0', type=str, help='gpu id')
     parser.add_argument('--half_precision', action='store_true', help='half precision training')
-
+    parser.add_argument('--reverse_aug', action='store_true', help='data augmentation with frame reversing')
 
     # For Temporal Augmentations
     parser.add_argument('--treg_mix_prob', default=1.0, type=float)

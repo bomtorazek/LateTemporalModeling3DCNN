@@ -24,9 +24,13 @@ def main():
     os.environ["CUDA_VISIBLE_DEVICES"]=args.gpu
     input_size, width, height = data_prep.get_size(args)
 
-    saveLocation = args.save_dir + "/" + args.dataset + "_" + args.arch + "_split" + str(args.split) + "_mixtype_" + str(args.mix_type)
+    saveLocation = args.save_dir + "/" + args.dataset + "_" + args.arch + "_split" + str(args.split) + "_mixtype_" + str(args.mix_type) + "_optimizer_" + str(args.optimizer)
+    if args.lrs == "Cosine_Warmup":
+        saveLocation += '_' + args.lrs
     if args.randaug:
         saveLocation += '_randaug_'+args.randaug
+    if args.reverse_aug:
+        saveLocation += '_reverse_aug'
 
     if not os.path.exists(saveLocation):
         os.makedirs(saveLocation)
@@ -61,7 +65,13 @@ def main():
     # define loss function (criterion) and learning rate scheduler
     criterion = nn.CrossEntropyLoss().cuda()
     #criterion2 = nn.MSELoss().cuda()
-    scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=5, verbose=True)
+
+    if args.lrs == "Cosine_Warmup":
+        cosine_scheduler = lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
+        total_epoch = args.epochs // 10 if args.epochs > 10 else 1
+        scheduler = optimization.GradualWarmupScheduler(optimizer, multiplier=1, total_epoch=total_epoch, after_scheduler=cosine_scheduler)
+    else:
+        scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=5, verbose=True)
 
     # define dataset specification
     dataset = data_config.get_dataset(args)
