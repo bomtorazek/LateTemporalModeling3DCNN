@@ -17,7 +17,7 @@ def de_interleave(x, size):
     s = list(x.shape) #[size*batch, class]
     return x.reshape([size, -1] + s[1:]).transpose(0, 1).reshape([-1] + s[1:])
 
-def train(ul_train_loader, model, criterion, optimizer, epoch, modality, args, length, input_size, writer,scheduler, val_loader = None, saveLocation = False):
+def train(ul_train_loader, model, criterion, optimizer, epoch, modality, args, length, input_size, writer,scheduler, val_loader = None, saveLocation = None):
     print(f"start {epoch} train")
  
     batch_time = utils.AverageMeter()

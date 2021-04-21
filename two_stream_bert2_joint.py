@@ -27,7 +27,12 @@ def main():
     os.environ["CUDA_VISIBLE_DEVICES"]=args.gpu
     input_size, width, height = data_prep.get_size(args)
 
-    saveLocation = args.save_dir + "/" + args.dataset + "_" + args.arch + "_split" + str(args.split) + "_mixtype_" + str(args.mix_type) + '_joint_' + str(args.threshold) + str(args.use_ema)
+    saveLocation = args.save_dir + "/" + args.dataset + "_" + args.arch + "_split" + str(args.split) + "_mixtype_" + str(args.mix_type) + '_joint_' + str(args.threshold) +'_transfer_'
+    if args.model_transfer == '':
+        saveLocation += 'False'
+    else:
+        saveLocation += 'True'
+    saveLocation += '_mu_' + str(args.mu)
     if args.randaug:
         saveLocation += '_randaug_'+args.randaug
 
@@ -71,8 +76,8 @@ def main():
 
     ul_batch = int(args.batch_size * 0.5) if '64f' in args.arch else args.batch_size
     train_sampler = RandomSampler 
-    train_loader = torch.utils.data.DataLoader(train_dataset, sampler=train_sampler(train_dataset), batch_size=args.batch_size, num_workers=args.workers, pin_memory=True, drop_last=True)
-    ul_train_loader = torch.utils.data.DataLoader(ul_train_dataset, sampler= train_sampler(ul_train_dataset), batch_size= ul_batch,num_workers=args.workers, pin_memory=True, drop_last= True)
+    train_loader = torch.utils.data.DataLoader(train_dataset, sampler=train_sampler(train_dataset), batch_size=args.batch_size, num_workers=args.workers, pin_memory=True, drop_last=False)
+    ul_train_loader = torch.utils.data.DataLoader(ul_train_dataset, sampler= train_sampler(ul_train_dataset), batch_size= ul_batch,num_workers=args.workers, pin_memory=True, drop_last= False)
     val_loader = torch.utils.data.DataLoader(val_dataset, sampler=SequentialSampler(val_dataset), batch_size=args.batch_size, num_workers=args.workers, pin_memory=True)
 
 
@@ -88,7 +93,10 @@ def main():
         print("Continuing with best accuracy: %.3f and start epoch %d and lr: %f" %(best_acc1, startEpoch, lr))
     else: #training ##
         print("Building model ... ")
-        model = build.build_model(args)
+        if args.model_transfer == '':
+            model = build.build_model(args)
+        else:
+            model = build.build_model(args, finetune=True)
         ## ----optimizer
         optimizer = optimization.get_optimizer(model, args)
         args.epochs = math.ceil(args.total_steps / args.eval_step) # 2**20 / 1024
@@ -114,37 +122,42 @@ def main():
     model.zero_grad()
     for epoch in range(startEpoch, args.epochs):
         if '64f' in args.arch:
-            learn_alter.train(train_loader, ul_train_loader, model, criterion, optimizer, epoch, modality, args, length, input_size, args.writer, scheduler)
+            if args.save_every_eval:
+                best_acc1= learn_alter.train(train_loader, ul_train_loader, model, criterion, optimizer, epoch, modality, args, length, input_size, args.writer, scheduler, val_loader, saveLocation,best_acc1)
+            else:
+                learn_alter.train(train_loader, ul_train_loader, model, criterion, optimizer, epoch, modality, args, length, input_size, args.writer, scheduler)
+
         else:
             learn_concat.train(train_loader, ul_train_loader, model, criterion, optimizer, epoch, modality, args, length, input_size, args.writer, scheduler)
             
         # evaluate on validation set
         acc1 = 0.0
         lossClassification = 0
-        if (epoch + 1) % args.save_freq == 0:
-            if '64f' in args.arch:
-                acc1,acc3,lossClassification = learn_alter.validate(val_loader, model, criterion, modality, args, length, input_size)
-            else:
-                acc1,acc3,lossClassification = learn_concat.validate(val_loader, model, criterion, modality, args, length, input_size)
+        if not args.save_every_eval:
+            if (epoch + 1) % args.save_freq == 0:
+                if '64f' in args.arch:
+                    acc1,acc3,lossClassification = learn_alter.validate(val_loader, model, criterion, modality, args, length, input_size)
+                else:
+                    acc1,acc3,lossClassification = learn_concat.validate(val_loader, model, criterion, modality, args, length, input_size)
 
-            args.writer.add_scalar('data/top1_validation', acc1, epoch)
-            args.writer.add_scalar('data/classification_loss_validation', lossClassification, epoch)
-       
-        # remember best acc@1 and save checkpoint
-        is_best = acc1 >= best_acc1
-        best_acc1 = max(acc1, best_acc1) 
+                args.writer.add_scalar('data/top1_validation', acc1, epoch)
+                args.writer.add_scalar('data/classification_loss_validation', lossClassification, epoch)
+        
+            # remember best acc@1 and save checkpoint
+            is_best = acc1 >= best_acc1
+            best_acc1 = max(acc1, best_acc1) 
 
-        if (epoch + 1) % args.save_freq == 0:
-            checkpoint_name = "%03d_%s" % (epoch , "checkpoint.pth.tar")
-            if is_best:
-                print("Model son iyi olarak kaydedildi")
-                utils.save_checkpoint({
-                    'epoch': epoch + 1,
-                    'arch': args.arch,
-                    'state_dict': model.state_dict(),
-                    'best_acc1': best_acc1,
-                    'optimizer' : optimizer.state_dict(),
-                }, is_best, checkpoint_name, saveLocation)
+            if (epoch + 1) % args.save_freq == 0:
+                checkpoint_name = "%03d_%s" % (epoch , "checkpoint.pth.tar")
+                if is_best:
+                    print("Model son iyi olarak kaydedildi")
+                    utils.save_checkpoint({
+                        'epoch': epoch + 1,
+                        'arch': args.arch,
+                        'state_dict': model.state_dict(),
+                        'best_acc1': best_acc1,
+                        'optimizer' : optimizer.state_dict(),
+                    }, is_best, checkpoint_name, saveLocation)
     
     checkpoint_name = "%03d_%s" % (epoch + 1, "checkpoint.pth.tar")
     utils.save_checkpoint({

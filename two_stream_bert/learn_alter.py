@@ -17,7 +17,7 @@ def de_interleave(x, size):
     s = list(x.shape) #[size*batch, class]
     return x.reshape([size, -1] + s[1:]).transpose(0, 1).reshape([-1] + s[1:])
 
-def train(train_loader,ul_train_loader, model, criterion, optimizer, epoch, modality, args, length, input_size, writer,scheduler):
+def train(train_loader,ul_train_loader, model, criterion, optimizer, epoch, modality, args, length, input_size, writer,scheduler,  val_loader = None, saveLocation = None, best_acc1= None):
     print(f"start {epoch} train")
  
     batch_time = utils.AverageMeter()
@@ -46,6 +46,8 @@ def train(train_loader,ul_train_loader, model, criterion, optimizer, epoch, moda
 
     p_bar = tqdm(range(args.eval_step))
     for batch_idx in range(args.eval_step):
+        if args.save_every_eval:
+            model.train()
         if args.nu > 0:
             for l_idx in range(args.nu):
                 try:
@@ -82,7 +84,7 @@ def train(train_loader,ul_train_loader, model, criterion, optimizer, epoch, moda
                 else:
                     Lx = criterion(logits_x, targets_x, reduction='mean')
 
-                Lx /= args.iter_size
+                Lx /= (args.iter_size *args.nu)
                 Lx.backward()
                 ##  ------ train acc for HMDB51
                 acc1, acc3 = utils.accuracy(logits_x.data, targets_x, topk=(1, 3))
@@ -125,9 +127,9 @@ def train(train_loader,ul_train_loader, model, criterion, optimizer, epoch, moda
 
                 Lu = (criterion(logits_u_s, targets_u,
                                         reduction='none') * mask).mean()
-                Lu /= args.iter_size
+                Lu /= (args.iter_size * args.mu)
                 Lu.backward()
-                maskmean = mask.mean() /args.iter_size
+                maskmean = mask.mean() / (args.iter_size * args.mu)
 
                 Lu_mini_batch_classification += Lu.data.item()
                 Lx_mini_batch_classification += Lx.data.item()
@@ -166,6 +168,29 @@ def train(train_loader,ul_train_loader, model, criterion, optimizer, epoch, moda
             mask=mask_probs.avg))
         p_bar.update()   
 
+        if args.save_every_eval and (batch_idx+1) % 8 == 0:
+            real_iter = epoch*args.eval_step + batch_idx+1
+            acc1,acc3,lossClassification = validate(val_loader, model, criterion, modality, args, length, input_size)
+            args.writer.add_scalar('data/top1_validation', acc1,real_iter)
+            args.writer.add_scalar('data/classification_loss_validation', lossClassification, real_iter)
+            args.writer.add_scalar('data/unlabeled_loss_training', losses_u.avg, real_iter)
+            
+            # remember best acc@1 and save checkpoint
+            is_best = acc1 >= best_acc1
+            best_acc1 = max(acc1, best_acc1) 
+            print(acc1)
+            checkpoint_name = "%03d_%s" % (real_iter , "checkpoint.pth.tar")
+            if is_best:
+                print("Model son iyi olarak kaydedildi")
+                utils.save_checkpoint({
+                    'epoch': real_iter,
+                    'arch': args.arch,
+                    'state_dict': model.state_dict(),
+                    'best_acc1': best_acc1,
+                    'optimizer' : optimizer.state_dict(),
+                }, is_best, checkpoint_name, saveLocation)
+
+
 
     print(' * Epoch: {epoch} HMDB51 acc@1 {top1.avg:.3f} acc@3 {top3.avg:.3f} \n'
           .format(epoch = epoch, top1=top1, top3=top3))
@@ -173,6 +198,9 @@ def train(train_loader,ul_train_loader, model, criterion, optimizer, epoch, moda
     writer.add_scalar('data/labeled_loss_training', losses_x.avg, epoch)
     writer.add_scalar('data/unlabeled_loss_training', losses_u.avg, epoch)
     writer.add_scalar('data/top1_training', top1.avg, epoch)
+
+    if args.save_every_eval:
+        return best_acc1
 
 
 def validate(val_loader, model, criterion, modality, args, length, input_size):
@@ -227,7 +255,7 @@ def validate(val_loader, model, criterion, modality, args, length, input_size):
             end = time.time()
     
     
-        print(' * * acc@1 {top1.avg:.3f} acc@3 {top3.avg:.3f} Classification Loss {lossClassification.avg:.4f}\n' 
-              .format(top1=top1, top3=top3, lossClassification=lossesClassification))
+        # print(' * * acc@1 {top1.avg:.3f} acc@3 {top3.avg:.3f} Classification Loss {lossClassification.avg:.4f}\n' 
+        #       .format(top1=top1, top3=top3, lossClassification=lossesClassification))
 
     return top1.avg, top3.avg, lossesClassification.avg
