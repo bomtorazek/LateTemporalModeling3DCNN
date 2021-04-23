@@ -116,6 +116,8 @@ def train(train_loader, model, criterion, optimizer, epoch, modality, args, leng
     writer.add_scalar('data/top1_training', top1.avg, epoch)
     writer.add_scalar('data/top3_training', top3.avg, epoch)
 
+    return top1.avg, top3.avg, lossesClassification.avg
+
 
 def validate(val_loader, model, criterion, modality, args, length, input_size):
     batch_time = utils.AverageMeter()
