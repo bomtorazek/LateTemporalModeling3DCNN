@@ -15,7 +15,6 @@ import csv
 
 
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"]='2'
 
 import torch
 import torch.nn as nn
@@ -41,49 +40,29 @@ model_names = sorted(name for name in models.__dict__
 dataset_names = sorted(name for name in datasets.__all__)
 
 parser = argparse.ArgumentParser(description='PyTorch Two-Stream Action Recognition')
-#parser.add_argument('--data', metavar='DIR', default='./datasets/ucf101_frames',
-#                    help='path to dataset')
 parser.add_argument('--settings', metavar='DIR', default='./datasets/settings',
                     help='path to datset setting files')
-#parser.add_argument('--modality', '-m', metavar='MODALITY', default='rgb',
-#                    choices=["rgb", "flow"],
-#                    help='modality: rgb | flow')
 parser.add_argument('--dataset', '-d', default='hmdb51',
                     choices=["ucf101", "hmdb51", "smtV2", "window", "cvpr", "cvpr_le"],
                     help='dataset: ucf101 | hmdb51 | smtV2')
-
 parser.add_argument('--arch', '-a', default='rgb_resneXt3D64f101_bert10_FRMB',
                     choices=model_names,
                     help='model architecture: ' +
                         ' | '.join(model_names) +
                         ' (default: rgb_resneXt3D64f101_bert10_FRMB)')
-parser.add_argument('--epoch', default='-1',type=str)
 parser.add_argument('-s', '--split', default=1, type=int, metavar='S',
                     help='which split of data to work on (default: 1)')
 parser.add_argument('-j', '--workers', default=2, type=int, metavar='N',
                     help='number of data loading workers (default: 2)')
 parser.add_argument('-b', '--batch-size', default=8, type=int,
                     metavar='N', help='mini-batch size (default: 8)')
-parser.add_argument('--iter-size', default=16, type=int,
-                    metavar='I', help='iter size to reduce memory usage (default: 16)')
-parser.add_argument('--print-freq', default=400, type=int,
-                    metavar='N', help='print frequency (default: 400)')
 parser.add_argument('--num-seg', default=1, type=int,
                     metavar='N', help='Number of segments in dataloader (default: 1)')
-parser.add_argument('--track', default='1', type=str)
-#parser.add_argument('--resume', default='./dene4', type=str, metavar='PATH',
-#                    help='path to latest checkpoint (default: none)')
-# parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
-#                     help='evaluate model on validation set')
+parser.add_argument('--model-path', default = '', help='dir of a checkpoint')
 
-
-
-smt_pretrained = False
-
-HALF = False
-training_continue = False
 
 def main():
+    os.environ["CUDA_VISIBLE_DEVICES"]=args.gpu
     global args, model,writer, length, width, height, input_size, scheduler
     args = parser.parse_args()
     if '3D' in args.arch:
@@ -108,16 +87,10 @@ def main():
     width = int(340 * scale)
     height = int(256 * scale)
     
-    saveLocation="./checkpoint/"+args.dataset+"_"+args.arch+"_split"+str(args.split)
-    if not os.path.exists(saveLocation):
-        os.makedirs(saveLocation)
-    writer = SummaryWriter(saveLocation)
-   
-    # create model
-
     
+    # create model
     print("Building validation model ... ")
-    model = build_model_validate()
+    model = build_model_validate(args.model_path)
     
     if HALF:
         model.half()  # convert to half precision
@@ -258,15 +231,10 @@ def main():
     acc1,acc3= validate(val_loader, model,modality)
     
     
-def build_model_validate():
-    modelLocation="./checkpoint/"+args.dataset+"_"+args.arch+"_split"+str(args.split)
-    if args.epoch == '-1':
-        model_path = os.path.join(modelLocation,'model_best.pth.tar') 
-    else:
-        model_path = os.path.join(modelLocation,args.epoch+'_checkpoint.pth.tar') 
-
+def build_model_validate(model_path):
+   
     params = torch.load(model_path)
-    print(modelLocation)
+    print(model_path)
     if args.dataset=='ucf101':
         model=models.__dict__[args.arch](modelPath='', num_classes=101,length=args.num_seg)
     elif args.dataset=='hmdb51':
