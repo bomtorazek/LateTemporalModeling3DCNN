@@ -84,7 +84,7 @@ def train(train_loader,ul_train_loader, model, criterion, optimizer, epoch, moda
                 else:
                     Lx = criterion(logits_x, targets_x, reduction='mean')
 
-                Lx /= (args.iter_size *args.nu)
+                Lx /= args.iter_size  #*args.nu
                 Lx.backward()
                 ##  ------ train acc for HMDB51
                 acc1, acc3 = utils.accuracy(logits_x.data, targets_x, topk=(1, 3))
@@ -127,7 +127,7 @@ def train(train_loader,ul_train_loader, model, criterion, optimizer, epoch, moda
 
                 Lu = (criterion(logits_u_s, targets_u,
                                         reduction='none') * mask).mean()
-                Lu /= (args.iter_size * args.mu)
+                Lu /= args.iter_size  #* args.mu
                 Lu.backward()
                 maskmean = mask.mean() / (args.iter_size * args.mu)
 
