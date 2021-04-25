@@ -16,7 +16,7 @@ def find_classes(dir):
 def make_dataset(root, source):
 
     if not os.path.exists(source):
-        print("Setting file %s for semi_CVPR dataset doesn't exist." % (source))
+        print("Setting file %s for CVPR dataset doesn't exist." % (source))
         sys.exit()
     else:
         clips = []

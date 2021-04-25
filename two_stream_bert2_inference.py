@@ -41,13 +41,8 @@ model_names = sorted(name for name in models.__dict__
 dataset_names = sorted(name for name in datasets.__all__)
 
 parser = argparse.ArgumentParser(description='PyTorch Two-Stream Action Recognition')
-#parser.add_argument('--data', metavar='DIR', default='./datasets/ucf101_frames',
-#                    help='path to dataset')
 parser.add_argument('--settings', metavar='DIR', default='./datasets/settings',
                     help='path to datset setting files')
-#parser.add_argument('--modality', '-m', metavar='MODALITY', default='rgb',
-#                    choices=["rgb", "flow"],
-#                    help='modality: rgb | flow')
 parser.add_argument('--dataset', '-d', default='hmdb51',
                     choices=["ucf101", "hmdb51", "smtV2", "window", "cvpr", "semi_cvpr"],
                     help='dataset: ucf101 | hmdb51 | smtV2')
@@ -57,7 +52,6 @@ parser.add_argument('--arch', '-a', default='rgb_resneXt3D64f101_bert10_FRMB',
                     help='model architecture: ' +
                         ' | '.join(model_names) +
                         ' (default: rgb_resneXt3D64f101_bert10_FRMB)')
-parser.add_argument('--epoch', default='-1',type=str)
 parser.add_argument('-s', '--split', default=1, type=int, metavar='S',
                     help='which split of data to work on (default: 1)')
 parser.add_argument('-j', '--workers', default=2, type=int, metavar='N',
@@ -70,11 +64,6 @@ parser.add_argument('--track', default='1', type=str)
 parser.add_argument('--model-path', default = '', help='dir of a checkpoint to finetune')
 parser.add_argument('--gpu', default = '0', type=str, help = 'gpuid')
 
-
-#parser.add_argument('--resume', default='./dene4', type=str, metavar='PATH',
-#                    help='path to latest checkpoint (default: none)')
-# parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
-#                     help='evaluate model on validation set')
 
 
 
