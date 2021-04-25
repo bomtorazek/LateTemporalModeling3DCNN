@@ -16,7 +16,7 @@ def find_classes(dir):
 def make_dataset(root, source):
 
     if not os.path.exists(source):
-        print("Setting file %s for CVPR dataset doesn't exist." % (source))
+        print("Setting file %s for semi_CVPR dataset doesn't exist." % (source))
         sys.exit()
     else:
         clips = []
@@ -26,7 +26,10 @@ def make_dataset(root, source):
                 line_info = line.split()
                 clip_path = os.path.join(root, line_info[0])
                 duration = int(line_info[1])
-                target = int(line_info[2])
+                try:
+                    target = int(line_info[2])
+                except:
+                    target = None
                 item = (clip_path, duration, target)
                 clips.append(item)
     return clips
@@ -215,8 +218,11 @@ class cvpr(data.Dataset):
 
         if self.transform is not None:
             clip_input = self.transform(clip_input)
-        if self.target_transform is not None:
-            target = self.target_transform(target)
+        if target is not None:
+            if self.target_transform is not None:
+                target = self.target_transform(target)
+        else:
+            target = []
         if self.video_transform is not None:
             clip_input = self.video_transform(clip_input)   
         return clip_name, clip_input, target
