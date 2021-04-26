@@ -99,14 +99,14 @@ def main():
         acc1, acc3, lossClassification = learn.train(train_loader, model, criterion, optimizer, epoch, modality, args, length, input_size, writer)
 
         # evaluate on validation set
-        acc1 = 0.0
-        lossClassification = 0
+        #acc1 = 0.0
+        #lossClassification = 0
 
         if (epoch + 1) % args.save_freq == 0:
-            acc1,acc3,lossClassification = learn.validate(val_loader, model, criterion, modality, args, length, input_size)
-            writer.add_scalar('data/top1_validation', acc1, epoch)
-            writer.add_scalar('data/top3_validation', acc3, epoch)
-            writer.add_scalar('data/classification_loss_validation', lossClassification, epoch)
+            #acc1,acc3,lossClassification = learn.validate(val_loader, model, criterion, modality, args, length, input_size)
+            #writer.add_scalar('data/top1_validation', acc1, epoch)
+            #writer.add_scalar('data/top3_validation', acc3, epoch)
+            #writer.add_scalar('data/classification_loss_validation', lossClassification, epoch)
             scheduler.step(lossClassification)
 
         # remember best acc@1 and save checkpoint
