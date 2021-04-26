@@ -15,7 +15,7 @@ import csv
 
 
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"]='2'
+
 
 import torch
 import torch.nn as nn
@@ -41,15 +41,10 @@ model_names = sorted(name for name in models.__dict__
 dataset_names = sorted(name for name in datasets.__all__)
 
 parser = argparse.ArgumentParser(description='PyTorch Two-Stream Action Recognition')
-#parser.add_argument('--data', metavar='DIR', default='./datasets/ucf101_frames',
-#                    help='path to dataset')
 parser.add_argument('--settings', metavar='DIR', default='./datasets/settings',
                     help='path to datset setting files')
-#parser.add_argument('--modality', '-m', metavar='MODALITY', default='rgb',
-#                    choices=["rgb", "flow"],
-#                    help='modality: rgb | flow')
 parser.add_argument('--dataset', '-d', default='hmdb51',
-                    choices=["ucf101", "hmdb51", "smtV2", "window", "cvpr", "cvpr_le"],
+                    choices=["ucf101", "hmdb51", "smtV2", "window", "cvpr", "semi_cvpr"],
                     help='dataset: ucf101 | hmdb51 | smtV2')
 
 parser.add_argument('--arch', '-a', default='rgb_resneXt3D64f101_bert10_FRMB',
@@ -57,24 +52,18 @@ parser.add_argument('--arch', '-a', default='rgb_resneXt3D64f101_bert10_FRMB',
                     help='model architecture: ' +
                         ' | '.join(model_names) +
                         ' (default: rgb_resneXt3D64f101_bert10_FRMB)')
-parser.add_argument('--epoch', default='-1',type=str)
 parser.add_argument('-s', '--split', default=1, type=int, metavar='S',
                     help='which split of data to work on (default: 1)')
 parser.add_argument('-j', '--workers', default=2, type=int, metavar='N',
                     help='number of data loading workers (default: 2)')
 parser.add_argument('-b', '--batch-size', default=8, type=int,
                     metavar='N', help='mini-batch size (default: 8)')
-parser.add_argument('--iter-size', default=16, type=int,
-                    metavar='I', help='iter size to reduce memory usage (default: 16)')
-parser.add_argument('--print-freq', default=400, type=int,
-                    metavar='N', help='print frequency (default: 400)')
 parser.add_argument('--num-seg', default=1, type=int,
                     metavar='N', help='Number of segments in dataloader (default: 1)')
 parser.add_argument('--track', default='1', type=str)
-#parser.add_argument('--resume', default='./dene4', type=str, metavar='PATH',
-#                    help='path to latest checkpoint (default: none)')
-# parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
-#                     help='evaluate model on validation set')
+parser.add_argument('--model-path', default = '', help='dir of a checkpoint to finetune')
+parser.add_argument('--gpu', default = '0', type=str, help = 'gpuid')
+
 
 
 
@@ -86,6 +75,7 @@ training_continue = False
 def main():
     global args, model,writer, length, width, height, input_size, scheduler
     args = parser.parse_args()
+    os.environ["CUDA_VISIBLE_DEVICES"]=args.gpu
     if '3D' in args.arch:
         if 'I3D' in args.arch or 'MFNET3D' in args.arch:
             if '112' in args.arch:
@@ -107,17 +97,10 @@ def main():
     input_size = int(224 * scale)
     width = int(340 * scale)
     height = int(256 * scale)
-    
-    saveLocation="./checkpoint/"+args.dataset+"_"+args.arch+"_split"+str(args.split)
-    if not os.path.exists(saveLocation):
-        os.makedirs(saveLocation)
-    writer = SummaryWriter(saveLocation)
    
-    # create model
-
-    
+    # create model    
     print("Building validation model ... ")
-    model = build_model_validate()
+    model = build_model_validate(args.model_path)
     
     if HALF:
         model.half()  # convert to half precision
@@ -127,7 +110,6 @@ def main():
     
     print("Model %s is loaded. " % (args.arch))
 
-    print("Saving everything to directory %s." % (saveLocation))
     if args.dataset=='ucf101':
         dataset='./datasets/ucf101_frames'
     elif args.dataset=='hmdb51':
@@ -138,8 +120,8 @@ def main():
         dataset='./datasets/window_frames'
     elif args.dataset=='cvpr':
         dataset='./datasets/cvpr_frames'
-    elif args.dataset=='cvpr_le':
-        dataset='./datasets/cvpr_le_frames'
+    elif args.dataset=='semi_cvpr':
+        dataset='./datasets/semi_cvpr_frames'
     else:
         print("No convenient dataset entered, exiting....")
         return 0
@@ -258,20 +240,16 @@ def main():
     acc1,acc3= validate(val_loader, model,modality)
     
     
-def build_model_validate():
-    modelLocation="./checkpoint/"+args.dataset+"_"+args.arch+"_split"+str(args.split)
-    if args.epoch == '-1':
-        model_path = os.path.join(modelLocation,'model_best.pth.tar') 
-    else:
-        model_path = os.path.join(modelLocation,args.epoch+'_checkpoint.pth.tar') 
-
+def build_model_validate(model_path):
     params = torch.load(model_path)
-    print(modelLocation)
+    print("model from",model_path)
     if args.dataset=='ucf101':
         model=models.__dict__[args.arch](modelPath='', num_classes=101,length=args.num_seg)
     elif args.dataset=='hmdb51':
         model=models.__dict__[args.arch](modelPath='', num_classes=51,length=args.num_seg)
-    elif 'cvpr' in args.dataset: #TODO for semi
+    elif 'semi' in args.dataset: 
+        model = models.__dict__[args.arch](modelPath='', num_classes=5, length=args.num_seg)
+    elif 'cvpr' in args.dataset: 
         model = models.__dict__[args.arch](modelPath='', num_classes=6, length=args.num_seg)
     
     if torch.cuda.device_count() > 1:
@@ -310,21 +288,26 @@ def validate(val_loader, model,modality):
                 inputs = inputs.cuda().half()
             else:
                 inputs = inputs.cuda()
-            targets = targets.cuda()
+            if targets != []:
+                targets = targets.cuda()
+            
     
             # compute output
             output, input_vectors, sequenceOut, _ = model(inputs)
-
-            for i in range(len(names)):
-                pred_dict[int(names[i])] = torch.argmax(output[i]).item()
+            for i in range(len(names)): #FIXME
+                pred_dict[int(names[i])] = torch.argmax(output[i]).item() # if the name of files are integers
                 prob_dict[int(names[i])] = softmax((output[i])).detach().cpu().numpy()
-        
+                # pred_dict[(names[i])] = torch.argmax(output[i]).item()
+                # prob_dict[(names[i])] = softmax((output[i])).detach().cpu().numpy()
+
+
             # measure accuracy and record loss
-            acc1, acc3 = accuracy(output.data, targets, topk=(1, 3))
+            if targets != []:
+                acc1, acc3 = accuracy(output.data, targets, topk=(1, 3))
             
-            top1.update(acc1.item(), output.size(0))
-            top3.update(acc3.item(), output.size(0))
-    
+                top1.update(acc1.item(), output.size(0))
+                top3.update(acc3.item(), output.size(0))
+        
             # measure elapsed time
             batch_time.update(time.time() - end)
             end = time.time()
@@ -334,11 +317,18 @@ def validate(val_loader, model,modality):
             pencil = csv.writer(f) 
             pencil.writerow(['VideoID', 'Video', 'ClassID'])
             for idx, key in enumerate(sorted(pred_dict.keys())):
-                pencil.writerow([idx, str(key)+'.mp4', pred_dict[key]+5]) # real class
+                pencil.writerow([idx, str(key)+'.mp4', pred_dict[key]+5]) # real class in Track2.1 # FIXME for semi
 
-        with open(f'track{args.track}_prob.csv', 'w') as f:
+        spt = args.model_path.split('/')
+        for idx, dir in enumerate(spt):
+            if 'check' in dir:
+                chk_idx = idx
+                break
+        model_name_from_path= spt[chk_idx+1]
+
+        with open(f'{model_name_from_path}_prob.csv', 'w') as f:
             pencil = csv.writer(f) 
-            pencil.writerow(['VideoID', 'Video', 'Run', 'Sit', 'Stand', 'Turn', 'Walk', 'Wave']) #FIXME
+            pencil.writerow(['VideoID', 'Video', 'Run', 'Sit', 'Stand', 'Turn', 'Walk', 'Wave']) #FIXME for semi
             for idx, key in enumerate(sorted(prob_dict.keys())):  
                 pencil.writerow([idx, str(key)+'.mp4', prob_dict[key][0],prob_dict[key][1],
                                                         prob_dict[key][2],prob_dict[key][3],
@@ -346,11 +336,13 @@ def validate(val_loader, model,modality):
 
 
 
-    
-        print(' * * acc@1 {top1.avg:.3f} acc@3 {top3.avg:.3f} \n' 
-              .format(top1=top1, top3=top3))
-
-    return top1.avg, top3.avg
+        if targets != []:    
+            print(' * * acc@1 {top1.avg:.3f} acc@3 {top3.avg:.3f} \n' 
+                .format(top1=top1, top3=top3))
+    if targets != []:
+        return top1.avg, top3.avg
+    else:
+        return None, None
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
