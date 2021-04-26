@@ -63,6 +63,7 @@ parser.add_argument('--num-seg', default=1, type=int,
 parser.add_argument('--track', default='1', type=str)
 parser.add_argument('--model-path', default = '', help='dir of a checkpoint to finetune')
 parser.add_argument('--gpu', default = '0', type=str, help = 'gpuid')
+parser.add_argument('--tta', default=1, type=int)
 
 
 
@@ -272,45 +273,94 @@ def validate(val_loader, model,modality):
         pred_dict = {}
         prob_dict = {}
         softmax = nn.Softmax(dim=0)
-        for i, (names, inputs, targets) in enumerate(val_loader):
-            if modality == "rgb" or modality == "pose":
-                if "3D" in args.arch or "r2plus1d" in args.arch or 'slowfast' in args.arch:
-                    inputs=inputs.view(-1,length,3,input_size,input_size).transpose(1,2)
-            elif modality == "flow":
-                if "3D" in args.arch or "r2plus1d" in args.arch:
-                    inputs=inputs.view(-1,length,2,input_size,input_size).transpose(1,2)
-                else:
-                    inputs=inputs.view(-1,2*length,input_size,input_size)
-            elif modality == "both":
-                inputs=inputs.view(-1,5*length,input_size,input_size)
-                
-            if HALF:
-                inputs = inputs.cuda().half()
-            else:
-                inputs = inputs.cuda()
-            if targets != []:
-                targets = targets.cuda()
-            
-    
-            # compute output
-            output, input_vectors, sequenceOut, _ = model(inputs)
-            for i in range(len(names)): #FIXME
-                pred_dict[int(names[i])] = torch.argmax(output[i]).item() # if the name of files are integers
-                prob_dict[int(names[i])] = softmax((output[i])).detach().cpu().numpy()
-                # pred_dict[(names[i])] = torch.argmax(output[i]).item()
-                # prob_dict[(names[i])] = softmax((output[i])).detach().cpu().numpy()
 
+        if args.tta != 1:
+            for t in range(args.tta):
+                for i, (names, inputs, targets) in enumerate(val_loader):
+                    if modality == "rgb" or modality == "pose":
+                        if "3D" in args.arch or "r2plus1d" in args.arch or 'slowfast' in args.arch:
+                            inputs=inputs.view(-1,length,3,input_size,input_size).transpose(1,2)
+                    elif modality == "flow":
+                        if "3D" in args.arch or "r2plus1d" in args.arch:
+                            inputs=inputs.view(-1,length,2,input_size,input_size).transpose(1,2)
+                        else:
+                            inputs=inputs.view(-1,2*length,input_size,input_size)
+                    elif modality == "both":
+                        inputs=inputs.view(-1,5*length,input_size,input_size)
+                        
+                    if HALF:
+                        inputs = inputs.cuda().half()
+                    else:
+                        inputs = inputs.cuda()
+                    if targets != []:
+                        targets = targets.cuda()
+                    
+                    # compute output
+                    output, input_vectors, sequenceOut, _ = model(inputs)
+                    for i in range(len(names)): #FIXME
 
-            # measure accuracy and record loss
-            if targets != []:
-                acc1, acc3 = accuracy(output.data, targets, topk=(1, 3))
-            
-                top1.update(acc1.item(), output.size(0))
-                top3.update(acc3.item(), output.size(0))
+                        if int(names[i]) in pred_dict:
+                            pred_dict[int(names[i])] += torch.argmax(output[i]).item() # if the name of files are integers
+                            prob_dict[int(names[i])] += softmax((output[i])).detach().cpu().numpy()
+                        else:
+                            pred_dict[int(names[i])] = torch.argmax(output[i]).item() # if the name of files are integers
+                            prob_dict[int(names[i])] = softmax((output[i])).detach().cpu().numpy()
+                    
+                    # measure accuracy and record loss 
+                    if targets != []: #FIXME
+                        acc1, acc3 = accuracy(output.data, targets, topk=(1, 3))
+                    
+                        top1.update(acc1.item(), output.size(0))
+                        top3.update(acc3.item(), output.size(0))
+                        
+            # averaging pred dict, prob dict
+            for key in pred_dict.keys():
+                pred_dict[key] /= args.tta
+                prob_dict[key] /= args.tta
         
             # measure elapsed time
             batch_time.update(time.time() - end)
             end = time.time()
+        else: 
+            for i, (names, inputs, targets) in enumerate(val_loader):
+                if modality == "rgb" or modality == "pose":
+                    if "3D" in args.arch or "r2plus1d" in args.arch or 'slowfast' in args.arch:
+                        inputs=inputs.view(-1,length,3,input_size,input_size).transpose(1,2)
+                elif modality == "flow":
+                    if "3D" in args.arch or "r2plus1d" in args.arch:
+                        inputs=inputs.view(-1,length,2,input_size,input_size).transpose(1,2)
+                    else:
+                        inputs=inputs.view(-1,2*length,input_size,input_size)
+                elif modality == "both":
+                    inputs=inputs.view(-1,5*length,input_size,input_size)
+                    
+                if HALF:
+                    inputs = inputs.cuda().half()
+                else:
+                    inputs = inputs.cuda()
+                if targets != []:
+                    targets = targets.cuda()
+                
+        
+                # compute output
+                output, input_vectors, sequenceOut, _ = model(inputs)
+                for i in range(len(names)): #FIXME
+                    pred_dict[int(names[i])] = torch.argmax(output[i]).item() # if the name of files are integers
+                    prob_dict[int(names[i])] = softmax((output[i])).detach().cpu().numpy()
+                    # pred_dict[(names[i])] = torch.argmax(output[i]).item()
+                    # prob_dict[(names[i])] = softmax((output[i])).detach().cpu().numpy()
+
+
+                # measure accuracy and record loss
+                if targets != []:
+                    acc1, acc3 = accuracy(output.data, targets, topk=(1, 3))
+                
+                    top1.update(acc1.item(), output.size(0))
+                    top3.update(acc3.item(), output.size(0))
+            
+                # measure elapsed time
+                batch_time.update(time.time() - end)
+                end = time.time()
 
         # using dict, make .csv files
         with open(f'track{args.track}_pred.csv', 'w') as f:
