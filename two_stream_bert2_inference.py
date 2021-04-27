@@ -32,6 +32,7 @@ import datasets
 import swats
 from opt.AdamW import AdamW
 from utils.model_path import rgb_3d_model_path_selection
+from two_stream_bert import data_config
 
 
 model_names = sorted(name for name in models.__dict__
@@ -62,6 +63,7 @@ parser.add_argument('--num-seg', default=1, type=int,
                     metavar='N', help='Number of segments in dataloader (default: 1)')
 parser.add_argument('--track', default='1', type=str)
 parser.add_argument('--model-path', default = '', help='dir of a checkpoint to finetune')
+parser.add_argument('--light_enhanced', action='store_true', default=False)
 parser.add_argument('--gpu', default = '0', type=str, help = 'gpuid')
 parser.add_argument('--tta', default=1, type=int)
 
@@ -111,21 +113,7 @@ def main():
     
     print("Model %s is loaded. " % (args.arch))
 
-    if args.dataset=='ucf101':
-        dataset='./datasets/ucf101_frames'
-    elif args.dataset=='hmdb51':
-        dataset='./datasets/hmdb51_frames'
-    elif args.dataset=='smtV2':
-        dataset='./datasets/smtV2_frames'
-    elif args.dataset=='window':
-        dataset='./datasets/window_frames'
-    elif args.dataset=='cvpr':
-        dataset='./datasets/cvpr_frames'
-    elif args.dataset=='semi_cvpr':
-        dataset='./datasets/semi_cvpr_frames'
-    else:
-        print("No convenient dataset entered, exiting....")
-        return 0
+    dataset = data_config.get_dataset(args)
     
     cudnn.benchmark = True
     modality=args.arch.split('_')[0]
@@ -213,7 +201,8 @@ def main():
             ])
 
     # data loading
-    val_setting_file = "test_%s_split%d.txt" % (modality, args.split)
+    #val_setting_file = "test_%s_split%d.txt" % (modality, args.split)
+    val_setting_file = "val_%s_split%d.txt" % (modality, args.split) #FIXME
     print("will test on", val_setting_file, "dataset")
     val_split_file = os.path.join(args.settings, args.dataset, val_setting_file)
     if not os.path.exists(val_split_file):
@@ -312,7 +301,7 @@ def validate(val_loader, model,modality):
                     
                         top1.update(acc1.item(), output.size(0))
                         top3.update(acc3.item(), output.size(0))
-                        
+
             # averaging pred dict, prob dict
             for key in pred_dict.keys():
                 pred_dict[key] /= args.tta
@@ -345,10 +334,10 @@ def validate(val_loader, model,modality):
                 # compute output
                 output, input_vectors, sequenceOut, _ = model(inputs)
                 for i in range(len(names)): #FIXME
-                    pred_dict[int(names[i])] = torch.argmax(output[i]).item() # if the name of files are integers
-                    prob_dict[int(names[i])] = softmax((output[i])).detach().cpu().numpy()
-                    # pred_dict[(names[i])] = torch.argmax(output[i]).item()
-                    # prob_dict[(names[i])] = softmax((output[i])).detach().cpu().numpy()
+                    #pred_dict[int(names[i])] = torch.argmax(output[i]).item() # if the name of files are integers
+                    #prob_dict[int(names[i])] = softmax((output[i])).detach().cpu().numpy()
+                    pred_dict[(names[i])] = torch.argmax(output[i]).item()
+                    prob_dict[(names[i])] = softmax((output[i])).detach().cpu().numpy()
 
 
                 # measure accuracy and record loss
@@ -371,10 +360,10 @@ def validate(val_loader, model,modality):
 
         spt = args.model_path.split('/')
         for idx, dir in enumerate(spt):
-            if 'check' in dir:
+            if args.arch in dir:
                 chk_idx = idx
                 break
-        model_name_from_path= spt[chk_idx+1]
+        model_name_from_path= spt[chk_idx]
 
         with open(f'{model_name_from_path}_prob.csv', 'w') as f:
             pencil = csv.writer(f) 
@@ -420,6 +409,7 @@ def accuracy(output, target, topk=(1,)):
     _, pred = output.topk(maxk, 1, True, True)
     pred = pred.t()
     correct = pred.eq(target.view(1, -1).expand_as(pred))
+    correct = correct.contiguous()
 
     res = []
     for k in topk:
