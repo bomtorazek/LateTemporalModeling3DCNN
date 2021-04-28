@@ -26,7 +26,11 @@ def get_args():
     parser.add_argument('--nu', default=1, type=int,
                     help='coefficient of labeled batch size')
     parser.add_argument('--lambda-u', default=1, type=float,
-                        help='coefficient of unlabeled loss')
+                        help='coefficient of unlabeled loss in fixmatch')
+    parser.add_argument('--lambda-ic', default=9, type=float,
+                        help='coefficient of unlabeled loss in contrastive')
+    parser.add_argument('--lambda-gc', default=1, type=float,
+                        help='coefficient of unlabeled loss in contrastive, group')
     parser.add_argument('--T', default=1, type=float,
                         help='pseudo label temperature')
     parser.add_argument('--threshold', default=0.95, type=float,

@@ -162,9 +162,10 @@ def get_transforms(input_size, scale_ratios, clip_mean, clip_std, args):
                 video_transforms.ToTensor(),
                 normalize,
             ])
-
-        unlabeled_train_transform = TransformFixMatch(input_size,scale_ratios, args.randaug, 1, normalize)
-        
+        if args.randaug != '':
+            unlabeled_train_transform = TransformFixMatch(input_size,scale_ratios, args.randaug, 1, normalize)
+        else:
+            unlabeled_train_transform = None
         val_transform = video_transforms.Compose([
                 video_transforms.CenterCrop((input_size)),
                 video_transforms.ToTensor(),

@@ -118,12 +118,20 @@ class rgb_r2plus1d_64f_34_bert10(nn.Module):
         torch.nn.init.xavier_uniform_(self.fc_action.weight)
         self.fc_action.bias.data.zero_()
         
+    def pad4resize(self, x):
+        resized = torch.cat((x,x),2)
+        resized[:,:,::2,:,:] = x
+        resized[:,:,1::2,:,:] = x
+        
+        return resized
+
     def forward(self, x):
         x = self.features(x)
         x = self.avgpool(x)
-        
-        x = x.view(x.size(0), self.hidden_size, 8)
-        x = x.transpose(1,2)
+        if x.size(2) == 4:
+            x= self.pad4resize(x)
+        x = x.view(x.size(0), self.hidden_size, 8) # [2, 512, 8, 1, 1] >> [2,512,8]
+        x = x.transpose(1,2) 
         input_vectors=x
         norm = input_vectors.norm(p=2, dim = -1, keepdim=True)
         input_vectors = input_vectors.div(norm)

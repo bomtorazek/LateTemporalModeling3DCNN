@@ -224,7 +224,6 @@ class VideoResNet(nn.Module):
 
         # init weights
         self._initialize_weights()
-
         if zero_init_residual:
             for m in self.modules():
                 if isinstance(m, Bottleneck):
@@ -406,7 +405,6 @@ def r2plus1d_34(num_classes, pretrained=False, progress=False, arch=None):
                         conv_makers=[Conv2Plus1D] * 4,
                         layers=[3, 4, 6, 3],
                         stem=R2Plus1dStem)
-
     model.fc = nn.Linear(model.fc.in_features, out_features=num_classes)
 
     # Fix difference in PyTorch vs Caffe2 architecture

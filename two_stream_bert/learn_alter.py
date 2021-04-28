@@ -196,7 +196,6 @@ def train(train_loader,ul_train_loader, model, criterion, optimizer, epoch, moda
           .format(epoch = epoch, top1=top1, top3=top3))
     p_bar.close()
     writer.add_scalar('data/labeled_loss_training', losses_x.avg, epoch)
-    writer.add_scalar('data/unlabeled_loss_training', losses_u.avg, epoch)
     writer.add_scalar('data/top1_training', top1.avg, epoch)
 
     if args.save_every_eval:
