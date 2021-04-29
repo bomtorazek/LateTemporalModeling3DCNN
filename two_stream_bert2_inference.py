@@ -334,7 +334,7 @@ def validate(val_loader, model,modality):
                 # compute output
                 output, input_vectors, sequenceOut, _ = model(inputs)
                 for i in range(len(names)): #FIXME
-                    names[i] = names[i].split('_')[1]
+                    names[i] = names[i].split('_')[1] #name format == vailidaiton_3
                     pred_dict[int(names[i])] = torch.argmax(output[i]).item() # if the name of files are integers
                     prob_dict[int(names[i])] = softmax((output[i])).detach().cpu().numpy()
                     # pred_dict[(names[i])] = torch.argmax(output[i]).item()
