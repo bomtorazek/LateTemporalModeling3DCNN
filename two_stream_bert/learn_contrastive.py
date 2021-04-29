@@ -47,7 +47,7 @@ def de_interleave(x, size):
     s = list(x.shape) #[size*batch, class]
     return x.reshape([size, -1] + s[1:]).transpose(0, 1).reshape([-1] + s[1:])
 
-def train(train_loader,ul_train_loader, ul_train_loader_half1, ul_train_loader_half2, model, criterion, optimizer, epoch, modality, args, length, input_size, writer,scheduler,  val_loader = None, saveLocation = None, best_acc1= None):
+def train(train_loader,ul_train_loader, ul_train_loader_half1, ul_train_loader_half2, model, criterion, criterion_bce, optimizer, epoch, modality, args, length, input_size, writer,scheduler,  val_loader = None, saveLocation = None, best_acc1= None):
     print(f"start {epoch} train")
  
     batch_time = utils.AverageMeter()
@@ -143,33 +143,50 @@ def train(train_loader,ul_train_loader, ul_train_loader_half1, ul_train_loader_h
                 logits_32ab, _,_,_ = model(inputs_32ab) # input ([2, 3, 32, 112, 112])
                 logits_32a, logits_32b = logits_32ab.chunk(2)
 
+                # group
+                if args.lambda_gc >0:
+                    _, pseudo_32a = torch.max(logits_32a, dim=-1) 
+                    _, pseudo_32b = torch.max(logits_32b, dim=-1)
+                    if pseudo_32a.item() == pseudo_32b.item():
+                        mean_logits = (logits_32a + logits_32b) *0.5
+                        mean_logits = Normalize(mean_logits,2)
+                        logits_64a = Normalize(logits_64a,2)
+                        batchSize = mean_logits.shape[0]
+                        gc_pos = torch.bmm(mean_logits.view(batchSize, 1, -1), logits_64a.view(batchSize, -1, 1)) # (1,1,5) * (1, 5, 1)  >> (1, 1, 1 )
+                        gc_pos = gc_pos.view(batchSize) #/args.T # (1)
+                        # gc_loss_a = criterion_bce(gc_pos,torch.ones(gc_pos.size(0),dtype=torch.float32, device= logits_64a.device))
+                        if gc_pos[0] < 0:
+                            raise ValueError("vectors of positive pairs should have same direction, train again.")
+                        gc_loss_a = -1 * torch.log(gc_pos)[0]
+                        add_ic = 0
+                    else:
+                        add_ic = 1
+
+
                 # logit normalization
                 logits_64a = Normalize(logits_64a, 2)
                 logits_32a = Normalize(logits_32a,2)
                 logits_32b = Normalize(logits_32b,2) # 1,5
                 
                 ## instance
-                # temp scaling, softmax
+                # temp scaling in calculate_ic
                 out_64_a = calculate_ic(logits_64a, logits_32a, logits_32b,args) # pos, pos, neg
                 L_ic_64_a =criterion(out_64_a, torch.zeros(out_64_a.size(0),dtype=torch.long, 
                                                                 device= logits_64a.device), reduction='mean')
                 out_32_a = calculate_ic(logits_32a, logits_64a, logits_32b,args)
                 L_ic_32_a =criterion(out_32_a, torch.zeros(out_32_a.size(0),dtype=torch.long, 
                                                                 device= logits_64a.device), reduction='mean')
+                
                 Lu_ic_a = args.lambda_ic*(L_ic_64_a + L_ic_32_a)/4.0 # (a,b, 32,64)
-
                 if args.lambda_gc >0:
-                    # slow 끼리 label 비교
-                    _, pseudo_32_a = torch.max(logits_32a, dim=-1) 
-                    _, pseudo_32_b = torch.max(logits_32b, dim=-1) 
-                    print(pseudo_32_a, pseudo_32_b)
-                    # 같으면 cross entropy (fast, slow)
-                    # 다르면 instance negative랑 같음.
-
-
-                Lu_ic_a /= args.iter_size * args.mu
-                Lu_ic_a.backward()
-
+                    if add_ic == 1:
+                        gc_loss_a = (L_ic_64_a + L_ic_32_a) / 2.0 # diff label
+                    Lu_a = Lu_ic_a + gc_loss_a * args.lambda_gc / 2.0 
+                else:
+                    Lu_a = Lu_ic_a
+                Lu_a /= args.iter_size * args.mu
+                Lu_a.backward()
+                
 
                 ##-------------- for data b!!
                 try:
@@ -191,6 +208,25 @@ def train(train_loader,ul_train_loader, ul_train_loader_half1, ul_train_loader_h
                 logits_32ab, _,_,_ = model(inputs_32ab) # input ([2, 3, 32, 112, 112])
                 logits_32a, logits_32b = logits_32ab.chunk(2)
 
+                # group
+                if args.lambda_gc >0:
+                    _, pseudo_32a = torch.max(logits_32a, dim=-1) 
+                    _, pseudo_32b = torch.max(logits_32b, dim=-1)
+                    if pseudo_32a.item() == pseudo_32b.item():
+                        mean_logits = (logits_32a + logits_32b) *0.5
+                        mean_logits = Normalize(mean_logits,2)
+                        logits_64b = Normalize(logits_64b,2)
+                        batchSize = mean_logits.shape[0]
+                        gc_pos = torch.bmm(mean_logits.view(batchSize, 1, -1), logits_64b.view(batchSize, -1, 1)) # (1,1,5) * (1, 5, 1)  >> (1, 1, 1 )
+                        gc_pos = gc_pos.view(batchSize) #/args.T # (1, 1)
+                        if gc_pos[0] < 0:
+                            raise ValueError("vectors of positive pairs should have same direction, train again.")
+                        # gc_loss_b = criterion_bce(gc_pos,torch.ones(gc_pos.size(0),dtype=torch.float32, device= logits_64b.device))
+                        gc_loss_b = -1 * torch.log(gc_pos)[0]
+                        add_ic = 0
+                    else:
+                        add_ic = 1
+
                 # logit normalization
                 logits_64b = Normalize(logits_64b, 2)
                 logits_32a = Normalize(logits_32a,2)
@@ -205,12 +241,18 @@ def train(train_loader,ul_train_loader, ul_train_loader_half1, ul_train_loader_h
                 L_ic_32_b =criterion(out_32_b, torch.zeros(out_32_b.size(0),dtype=torch.long, 
                                                                 device= logits_64b.device), reduction='mean')
                 Lu_ic_b = args.lambda_ic*(L_ic_64_b + L_ic_32_b)/4.0
-                Lu_ic_b /= args.iter_size * args.mu
-                Lu_ic_b.backward()
-
-                ic_mini_batch_classification += Lu_ic_a.item() + Lu_ic_b.item()
                 if args.lambda_gc >0:
-                    gc_mini_batch_classification += 0 # FIXME
+                    if add_ic == 1:
+                        gc_loss_b = (L_ic_64_b+ L_ic_32_b) / 2.0 # diff label
+                    Lu_b = Lu_ic_b + gc_loss_b * args.lambda_gc / 2.0 
+                else:
+                    Lu_b = Lu_ic_b
+                Lu_b /= args.iter_size * args.mu
+                Lu_b.backward()
+
+                ic_mini_batch_classification += Lu_a.item() + Lu_b.item()
+                if args.lambda_gc > 0:
+                    gc_mini_batch_classification += (gc_loss_b +gc_loss_a) *args.lambda_gc /(args.iter_size * args.mu *2.0) 
                 # mask_mini_batch_classification += maskmean.data.item()
                 if args.nu == 0:
                     totalSamplePerIter +=  logits_32ab.size(0)
@@ -265,6 +307,7 @@ def train(train_loader,ul_train_loader, ul_train_loader_half1, ul_train_loader_h
             args.writer.add_scalar('data/top1_validation', acc1,real_iter)
             args.writer.add_scalar('data/classification_loss_validation', lossClassification, real_iter)
             args.writer.add_scalar('data/unlabeled_loss_training', losses_ic.avg, real_iter)
+            args.writer.add_scalar('data/unlabeled_loss_training_gc', losses_gc.avg, real_iter)
             
             # remember best acc@1 and save checkpoint
             is_best = acc1 >= best_acc1

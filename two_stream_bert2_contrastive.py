@@ -33,8 +33,9 @@ def main():
     else:
         saveLocation += 'True'
     if args.randaug:
-        saveLocation += '_randaug_'+args.randaug + '_mu_' + str(args.mu)
-    saveLocation += '_lambda_' + str(args.lambda_ic) + '_' + str(args.lambda_gc) + '_Tau_' + str(args.T)
+        saveLocation += '_randaug_' + args.randaug 
+    saveLocation +=  '_total_step_' + str(args.total_steps)
+    saveLocation += '_lambda_' + str(args.lambda_ic) + '_' + str(int(args.lambda_gc)) + '_Tau_' + str(args.T)
 
     if not os.path.exists(saveLocation):
         os.makedirs(saveLocation)
@@ -79,10 +80,10 @@ def main():
     print('{} samples found, {} train samples, {} unlabeled train samples, and {} test samples.'.format(len(val_dataset)+len(train_dataset) +len(ul_train_dataset), len(train_dataset),len(ul_train_dataset), len(val_dataset)))
 
     ul_batch = int(args.batch_size * 0.5)  
-    train_loader = torch.utils.data.DataLoader(train_dataset, sampler=RandomSampler(train_dataset), batch_size=args.batch_size, num_workers=args.workers, pin_memory=True, drop_last=False)
+    train_loader = torch.utils.data.DataLoader(train_dataset, sampler=RandomSampler(train_dataset), batch_size=args.batch_size, num_workers=args.workers, pin_memory=True, drop_last=True)
     ul_train_loader = torch.utils.data.DataLoader(ul_train_dataset, sampler= SequentialSampler(ul_train_dataset), batch_size= ul_batch,num_workers=args.workers, pin_memory=True, drop_last= False)
-    ul_train_loader_half1 = torch.utils.data.DataLoader(ul_train_dataset_half1, sampler= SequentialSampler(ul_train_dataset_half1), batch_size= ul_batch*2,num_workers=args.workers, pin_memory=True, drop_last= False)
-    ul_train_loader_half2 = torch.utils.data.DataLoader(ul_train_dataset_half2, sampler= SequentialSampler(ul_train_dataset_half2), batch_size= ul_batch*2,num_workers=args.workers, pin_memory=True, drop_last= False)
+    ul_train_loader_half1 = torch.utils.data.DataLoader(ul_train_dataset_half1, sampler= SequentialSampler(ul_train_dataset_half1), batch_size= ul_batch*2,num_workers=args.workers, pin_memory=True, drop_last= True)
+    ul_train_loader_half2 = torch.utils.data.DataLoader(ul_train_dataset_half2, sampler= SequentialSampler(ul_train_dataset_half2), batch_size= ul_batch*2,num_workers=args.workers, pin_memory=True, drop_last= True)
     val_loader = torch.utils.data.DataLoader(val_dataset, sampler=SequentialSampler(val_dataset), batch_size=args.batch_size, num_workers=args.workers, pin_memory=True)
 
 
@@ -105,13 +106,14 @@ def main():
         ## ----optimizer
         optimizer = optimization.get_optimizer(model, args)
         args.eval_step = int(1513/(args.batch_size * args.mu))
-        args.eval_step = args.eval_step + 8 - args.eval_step %8
+        args.eval_step = args.eval_step - args.eval_step %8
         args.epochs = math.ceil(args.total_steps / args.eval_step) # 2**20 / 1024
         startEpoch = 0
     print("Model %s is loaded. " % (args.arch))
     
     ##---------------------- define loss function (criterion) and learning rate scheduler
     criterion = F.cross_entropy
+    criterion_bce = nn.BCEWithLogitsLoss()
     
     # scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=5, verbose=True)
     scheduler = lr_scheduler.get_cosine_schedule_with_warmup(
@@ -121,9 +123,9 @@ def main():
     model.zero_grad()
     for epoch in range(startEpoch, args.epochs):
         if args.save_every_eval:
-            best_acc1= learn_contrastive.train(train_loader, ul_train_loader, ul_train_loader_half1, ul_train_loader_half2, model, criterion, optimizer, epoch, modality, args, length, input_size, args.writer, scheduler, val_loader, saveLocation,best_acc1)
+            best_acc1= learn_contrastive.train(train_loader, ul_train_loader, ul_train_loader_half1, ul_train_loader_half2, model, criterion, criterion_bce, optimizer, epoch, modality, args, length, input_size, args.writer, scheduler, val_loader, saveLocation,best_acc1)
         else:
-            learn_contrastive.train(train_loader, ul_train_loader, ul_train_loader_half1, ul_train_loader_half2, model, criterion, optimizer, epoch, modality, args, length, input_size, args.writer, scheduler)
+            learn_contrastive.train(train_loader, ul_train_loader, ul_train_loader_half1, ul_train_loader_half2, model, criterion, criterion_bce, optimizer, epoch, modality, args, length, input_size, args.writer, scheduler)
 
           
         # evaluate on validation set
@@ -131,7 +133,7 @@ def main():
         lossClassification = 0
         if not args.save_every_eval:
             if (epoch + 1) % args.save_freq == 0:
-                acc1,acc3,lossClassification = learn_contrast.validate(val_loader, model, criterion, modality, args, length, input_size)
+                acc1,acc3,lossClassification = learn_contrast.validate(val_loader, model, criterion, criterion_bce, modality, args, length, input_size)
                 
                 args.writer.add_scalar('data/top1_validation', acc1, epoch)
                 args.writer.add_scalar('data/classification_loss_validation', lossClassification, epoch)
