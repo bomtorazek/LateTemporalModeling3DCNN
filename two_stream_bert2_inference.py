@@ -15,7 +15,7 @@ import csv
 
 
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"]='2'
+
 
 import torch
 import torch.nn as nn
@@ -32,6 +32,7 @@ import datasets
 import swats
 from opt.AdamW import AdamW
 from utils.model_path import rgb_3d_model_path_selection
+from two_stream_bert import data_config
 
 
 model_names = sorted(name for name in models.__dict__
@@ -41,13 +42,8 @@ model_names = sorted(name for name in models.__dict__
 dataset_names = sorted(name for name in datasets.__all__)
 
 parser = argparse.ArgumentParser(description='PyTorch Two-Stream Action Recognition')
-#parser.add_argument('--data', metavar='DIR', default='./datasets/ucf101_frames',
-#                    help='path to dataset')
 parser.add_argument('--settings', metavar='DIR', default='./datasets/settings',
                     help='path to datset setting files')
-#parser.add_argument('--modality', '-m', metavar='MODALITY', default='rgb',
-#                    choices=["rgb", "flow"],
-#                    help='modality: rgb | flow')
 parser.add_argument('--dataset', '-d', default='hmdb51',
                     choices=["ucf101", "hmdb51", "smtV2", "window", "cvpr", "semi_cvpr"],
                     help='dataset: ucf101 | hmdb51 | smtV2')
@@ -57,7 +53,6 @@ parser.add_argument('--arch', '-a', default='rgb_resneXt3D64f101_bert10_FRMB',
                     help='model architecture: ' +
                         ' | '.join(model_names) +
                         ' (default: rgb_resneXt3D64f101_bert10_FRMB)')
-parser.add_argument('--epoch', default='-1',type=str)
 parser.add_argument('-s', '--split', default=1, type=int, metavar='S',
                     help='which split of data to work on (default: 1)')
 parser.add_argument('-j', '--workers', default=2, type=int, metavar='N',
@@ -66,13 +61,12 @@ parser.add_argument('-b', '--batch-size', default=8, type=int,
                     metavar='N', help='mini-batch size (default: 8)')
 parser.add_argument('--num-seg', default=1, type=int,
                     metavar='N', help='Number of segments in dataloader (default: 1)')
-parser.add_argument('--track', default='1', type=str)
+parser.add_argument('--track', default='2', type=str)
 parser.add_argument('--model-path', default = '', help='dir of a checkpoint to finetune')
-
-#parser.add_argument('--resume', default='./dene4', type=str, metavar='PATH',
-#                    help='path to latest checkpoint (default: none)')
-# parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
-#                     help='evaluate model on validation set')
+parser.add_argument('--light_enhanced', action='store_true', default=False)
+parser.add_argument('--gpu', default = '0', type=str, help = 'gpuid')
+parser.add_argument('--tta', default=1, type=int)
+parser.add_argument('--save-csv', action='store_true', default = False)
 
 
 
@@ -84,6 +78,7 @@ training_continue = False
 def main():
     global args, model,writer, length, width, height, input_size, scheduler
     args = parser.parse_args()
+    os.environ["CUDA_VISIBLE_DEVICES"]=args.gpu
     if '3D' in args.arch:
         if 'I3D' in args.arch or 'MFNET3D' in args.arch:
             if '112' in args.arch:
@@ -118,21 +113,7 @@ def main():
     
     print("Model %s is loaded. " % (args.arch))
 
-    if args.dataset=='ucf101':
-        dataset='./datasets/ucf101_frames'
-    elif args.dataset=='hmdb51':
-        dataset='./datasets/hmdb51_frames'
-    elif args.dataset=='smtV2':
-        dataset='./datasets/smtV2_frames'
-    elif args.dataset=='window':
-        dataset='./datasets/window_frames'
-    elif args.dataset=='cvpr':
-        dataset='./datasets/cvpr_frames'
-    elif args.dataset=='semi_cvpr':
-        dataset='./datasets/semi_cvpr_frames'
-    else:
-        print("No convenient dataset entered, exiting....")
-        return 0
+    dataset = data_config.get_dataset(args)
     
     cudnn.benchmark = True
     modality=args.arch.split('_')[0]
@@ -221,6 +202,7 @@ def main():
 
     # data loading
     val_setting_file = "test_%s_split%d.txt" % (modality, args.split)
+    # val_setting_file = "val_%s_split%d.txt" % (modality, args.split) #FIXME
     print("will test on", val_setting_file, "dataset")
     val_split_file = os.path.join(args.settings, args.dataset, val_setting_file)
     if not os.path.exists(val_split_file):
@@ -250,7 +232,7 @@ def main():
     
 def build_model_validate(model_path):
     params = torch.load(model_path)
-    print(model_path)
+    print("model from",model_path)
     if args.dataset=='ucf101':
         model=models.__dict__[args.arch](modelPath='', num_classes=101,length=args.num_seg)
     elif args.dataset=='hmdb51':
@@ -280,66 +262,125 @@ def validate(val_loader, model,modality):
         pred_dict = {}
         prob_dict = {}
         softmax = nn.Softmax(dim=0)
-        for i, (names, inputs, targets) in enumerate(val_loader):
-            if modality == "rgb" or modality == "pose":
-                if "3D" in args.arch or "r2plus1d" in args.arch or 'slowfast' in args.arch:
-                    inputs=inputs.view(-1,length,3,input_size,input_size).transpose(1,2)
-            elif modality == "flow":
-                if "3D" in args.arch or "r2plus1d" in args.arch:
-                    inputs=inputs.view(-1,length,2,input_size,input_size).transpose(1,2)
-                else:
-                    inputs=inputs.view(-1,2*length,input_size,input_size)
-            elif modality == "both":
-                inputs=inputs.view(-1,5*length,input_size,input_size)
-                
-            if HALF:
-                inputs = inputs.cuda().half()
-            else:
-                inputs = inputs.cuda()
-            targets = targets.cuda()
-    
-            # compute output
-            output, input_vectors, sequenceOut, _ = model(inputs)
-            for i in range(len(names)): #FIXME
-                # pred_dict[int(names[i])] = torch.argmax(output[i]).item()
-                # prob_dict[int(names[i])] = softmax((output[i])).detach().cpu().numpy()
-                pred_dict[(names[i])] = torch.argmax(output[i]).item()
-                prob_dict[(names[i])] = softmax((output[i])).detach().cpu().numpy()
 
+        if args.tta != 1:
+            for t in range(args.tta):
+                for i, (names, inputs, targets) in enumerate(val_loader):
+                    if modality == "rgb" or modality == "pose":
+                        if "3D" in args.arch or "r2plus1d" in args.arch or 'slowfast' in args.arch:
+                            inputs=inputs.view(-1,length,3,input_size,input_size).transpose(1,2)
+                    elif modality == "flow":
+                        if "3D" in args.arch or "r2plus1d" in args.arch:
+                            inputs=inputs.view(-1,length,2,input_size,input_size).transpose(1,2)
+                        else:
+                            inputs=inputs.view(-1,2*length,input_size,input_size)
+                    elif modality == "both":
+                        inputs=inputs.view(-1,5*length,input_size,input_size)
+                        
+                    if HALF:
+                        inputs = inputs.cuda().half()
+                    else:
+                        inputs = inputs.cuda()
+                    if targets != []:
+                        targets = targets.cuda()
+                    
+                    # compute output
+                    output, input_vectors, sequenceOut, _ = model(inputs)
+                    for i in range(len(names)): #FIXME
 
-            # measure accuracy and record loss
-            acc1, acc3 = accuracy(output.data, targets, topk=(1, 3))
-            
-            top1.update(acc1.item(), output.size(0))
-            top3.update(acc3.item(), output.size(0))
-    
+                        if int(names[i]) in pred_dict:
+                            pred_dict[int(names[i])] += torch.argmax(output[i]).item() # if the name of files are integers
+                            prob_dict[int(names[i])] += softmax((output[i])).detach().cpu().numpy()
+                        else:
+                            pred_dict[int(names[i])] = torch.argmax(output[i]).item() # if the name of files are integers
+                            prob_dict[int(names[i])] = softmax((output[i])).detach().cpu().numpy()
+                    
+                    # measure accuracy and record loss 
+                    if targets != []: #FIXME
+                        acc1, acc3 = accuracy(output.data, targets, topk=(1, 3))
+                    
+                        top1.update(acc1.item(), output.size(0))
+                        top3.update(acc3.item(), output.size(0))
+
+            # averaging pred dict, prob dict
+            for key in pred_dict.keys():
+                pred_dict[key] /= args.tta
+                prob_dict[key] /= args.tta
+        
             # measure elapsed time
             batch_time.update(time.time() - end)
             end = time.time()
+        else: 
+            for i, (names, inputs, targets) in enumerate(val_loader):
+                if modality == "rgb" or modality == "pose":
+                    if "3D" in args.arch or "r2plus1d" in args.arch or 'slowfast' in args.arch:
+                        inputs=inputs.view(-1,length,3,input_size,input_size).transpose(1,2)
+                elif modality == "flow":
+                    if "3D" in args.arch or "r2plus1d" in args.arch:
+                        inputs=inputs.view(-1,length,2,input_size,input_size).transpose(1,2)
+                    else:
+                        inputs=inputs.view(-1,2*length,input_size,input_size)
+                elif modality == "both":
+                    inputs=inputs.view(-1,5*length,input_size,input_size)
+                    
+                if HALF:
+                    inputs = inputs.cuda().half()
+                else:
+                    inputs = inputs.cuda()
+                if targets != []:
+                    targets = targets.cuda()
+                
+        
+                # compute output
+                output, input_vectors, sequenceOut, _ = model(inputs)
+                for i in range(len(names)): #FIXME
+                    names[i] = names[i].split('_')[1]
+                    pred_dict[int(names[i])] = torch.argmax(output[i]).item() # if the name of files are integers
+                    prob_dict[int(names[i])] = softmax((output[i])).detach().cpu().numpy()
+                    # pred_dict[(names[i])] = torch.argmax(output[i]).item()
+                    # prob_dict[(names[i])] = softmax((output[i])).detach().cpu().numpy()
+
+
+                # measure accuracy and record loss
+                if targets != []:
+                    acc1, acc3 = accuracy(output.data, targets, topk=(1, 3))
+                
+                    top1.update(acc1.item(), output.size(0))
+                    top3.update(acc3.item(), output.size(0))
+            
+                # measure elapsed time
+                batch_time.update(time.time() - end)
+                end = time.time()
 
         # using dict, make .csv files
-        with open(f'track{args.track}_pred.csv', 'w') as f:
-            pencil = csv.writer(f) 
-            pencil.writerow(['VideoID', 'Video', 'ClassID'])
-            for idx, key in enumerate(sorted(pred_dict.keys())):
-                # pencil.writerow([idx, str(key)+'.mp4', pred_dict[key]+5]) # real class
-                pencil.writerow([idx, str(key)+'.mp4', pred_dict[key]]) # real class # FIXME
+        if args.save_csv:
+            with open(f'track{args.track}_pred.csv', 'w') as f:
+                pencil = csv.writer(f) 
+                pencil.writerow(['VideoID', 'Video', 'ClassID'])
+                for idx, key in enumerate(sorted(pred_dict.keys())):
+                    pencil.writerow([idx, str(key)+'.mp4', pred_dict[key]]) 
 
-        # with open(f'track{args.track}_prob.csv', 'w') as f:
-        #     pencil = csv.writer(f) 
-        #     pencil.writerow(['VideoID', 'Video', 'Run', 'Sit', 'Stand', 'Turn', 'Walk', 'Wave']) #FIXME
-        #     for idx, key in enumerate(sorted(prob_dict.keys())):  
-        #         pencil.writerow([idx, str(key)+'.mp4', prob_dict[key][0],prob_dict[key][1],
-        #                                                 prob_dict[key][2],prob_dict[key][3],
-        #                                                 prob_dict[key][4],prob_dict[key][5]]) # real class
+            spt = args.model_path.split('/')
+            for idx, dir in enumerate(spt):
+                if args.arch in dir:
+                    chk_idx = idx
+                    break
+            model_name_from_path= spt[chk_idx]
+
+            with open(f'{model_name_from_path}_prob.csv', 'w') as f:
+                pencil = csv.writer(f) 
+                pencil.writerow(['VideoID', 'Video', 'Drink', 'Jump', 'Pick', 'Pour', 'Push'])
+                for idx, key in enumerate(sorted(prob_dict.keys())):  
+                    pencil.writerow([idx, str(key)+'.mp4', prob_dict[key][0],prob_dict[key][1],prob_dict[key][2],prob_dict[key][3],prob_dict[key][4]]) 
 
 
-
-    
-        print(' * * acc@1 {top1.avg:.3f} acc@3 {top3.avg:.3f} \n' 
-              .format(top1=top1, top3=top3))
-
-    return top1.avg, top3.avg
+        if targets != []:    
+            print(' * * acc@1 {top1.avg:.3f} acc@3 {top3.avg:.3f} \n' 
+                .format(top1=top1, top3=top3))
+    if targets != []:
+        return top1.avg, top3.avg
+    else:
+        return None, None
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
@@ -367,6 +408,7 @@ def accuracy(output, target, topk=(1,)):
     _, pred = output.topk(maxk, 1, True, True)
     pred = pred.t()
     correct = pred.eq(target.view(1, -1).expand_as(pred))
+    correct = correct.contiguous()
 
     res = []
     for k in topk:
