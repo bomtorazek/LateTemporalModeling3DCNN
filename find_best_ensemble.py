@@ -11,8 +11,8 @@ from sklearn.metrics import accuracy_score
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--csv-folder', type=str, default='checkpoint/')
-    parser.add_argument('--gt-path', type=str, default='/home/esuh/LateTemporalModeling3DCNN/datasets/settings/semi_cvpr/test_rgb_split0.txt')
+    parser.add_argument('--csv-folder', type=str, default='ensemble_models')
+    parser.add_argument('--gt-path', type=str, default='/home/esuh/LateTemporalModeling3DCNN/datasets/settings/semi_cvpr/test_rgb_split111.txt')
     parser.add_argument('--out-path', type=str, default='./ensembled_track2_pred.csv')
     
     
@@ -28,7 +28,7 @@ def make_gt(gt_path):
     with open(gt_path) as file:
         for row in file.readlines():
             spt = row.split()
-            gt.append([int(spt[0].split('_')[1]), int(spt[2])]) # FIXME
+            gt.append([int(spt[0]), int(spt[2])]) # FIXME
     gt = [i[1] for i in sorted(gt)]
     return gt
         
