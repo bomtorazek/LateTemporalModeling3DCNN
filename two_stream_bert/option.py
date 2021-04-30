@@ -77,6 +77,7 @@ def get_args():
     parser.add_argument('--gpu', default='0', type=str, help='gpu id')
     parser.add_argument('--half_precision', action='store_true', help='half precision training')
     parser.add_argument('--model-transfer', default = '', help='dir of a checkpoint to finetune')
+    parser.add_argument('--fromcont', action = 'store_true', help='if finetune from cont')
 
     # For Temporal Augmentations
     parser.add_argument('--treg_mix_prob', default=1.0, type=float)

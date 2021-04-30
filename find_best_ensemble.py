@@ -83,10 +83,12 @@ def do_ensemble(args, gt):
     folder = args.csv_folder
     probs_list = []
     model_list = []
+    file_list = []
     for f in listdir(folder):
         if isfile(join(folder,f)):
             model_list.append(f) # file name
             probs_list.append(pd.read_csv(join(folder,f))) #[ probs[0], probs[1], ...]
+            file_list.append(f)
 
     num_models = len(probs_list)
     comb_list = make_combinations(num_models)
@@ -126,7 +128,7 @@ def do_ensemble(args, gt):
             ensemble_indices = comb
             best_pred = voted_preds
 
-    return best_acc, ensemble_method, ensemble_indices, best_pred
+    return best_acc, ensemble_method, ensemble_indices, best_pred, file_list
 
 
         
@@ -138,8 +140,10 @@ def do_ensemble(args, gt):
 if __name__ == '__main__':
     args = get_args()
     gt = make_gt(args.gt_path)
-    best_acc, ensemble_method, ensemble_indices, best_pred = do_ensemble(args,gt)
+    best_acc, ensemble_method, ensemble_indices, best_pred, file_list = do_ensemble(args,gt)
     print(f"best_acc = {best_acc*100}, method = {ensemble_method}, indices = {ensemble_indices}")
+    for file in file_list:
+        print(file)
     with open(args.out_path, 'w') as f:
         pencil = csv.writer(f) 
         pencil.writerow(['VideoID', 'Video', 'ClassID'])

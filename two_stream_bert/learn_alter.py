@@ -132,9 +132,11 @@ def train(train_loader,ul_train_loader, model, criterion, optimizer, epoch, moda
                 maskmean = mask.mean() / (args.iter_size * args.mu)
 
                 Lu_mini_batch_classification += Lu.data.item()
-                Lx_mini_batch_classification += Lx.data.item()
+                if args.nu != 0:
+                    Lx_mini_batch_classification += Lx.data.item()
                 mask_mini_batch_classification += maskmean.data.item()
-        
+                if args.nu ==0:
+                    totalSamplePerIter +=  logits_u_w.size(0) *2
        
         ## -----optimizer step
         if (batch_idx+1) % args.iter_size == 0:
@@ -168,7 +170,7 @@ def train(train_loader,ul_train_loader, model, criterion, optimizer, epoch, moda
             mask=mask_probs.avg))
         p_bar.update()   
 
-        if args.save_every_eval and (batch_idx+1) % 8 == 0:
+        if args.save_every_eval and (batch_idx+1) % 4 == 0:
             real_iter = epoch*args.eval_step + batch_idx+1
             acc1,acc3,lossClassification = validate(val_loader, model, criterion, modality, args, length, input_size)
             args.writer.add_scalar('data/top1_validation', acc1,real_iter)
