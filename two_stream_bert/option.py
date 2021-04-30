@@ -16,7 +16,7 @@ def get_args():
     #parser.add_argument('--modality', '-m', metavar='MODALITY', default='rgb',
     #                    choices=["rgb", "flow"], help='modality: rgb | flow')
     parser.add_argument('--dataset', '-d', default='hmdb51',
-                        choices=["ucf101", "hmdb51", "smtV2", "window", "cvpr", "cvpr_sid", "cvpr_sid_sm", "cvpr_le"], help='dataset: ucf101 | hmdb51 | smtV2')
+                        choices=["ucf101", "hmdb51", "smtV2", "window", "cvpr", "cvpr_sid", "cvpr_sid_sm", "cvpr_sid_gic", "cvpr_le"], help='dataset: ucf101 | hmdb51 | smtV2')
     parser.add_argument('-s', '--split', default=1, type=int, metavar='S', help='which split of data to work on (default: 1)')
     parser.add_argument('-j', '--workers', default=2, type=int, metavar='N', help='number of data loading workers (default: 2)')
     parser.add_argument('--arch', '-a', default='rgb_resneXt3D64f101_bert10_FRMB', choices=model_names,
