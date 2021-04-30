@@ -27,7 +27,7 @@ def main():
     os.environ["CUDA_VISIBLE_DEVICES"]=args.gpu
     input_size, width, height = data_prep.get_size(args)
 
-    saveLocation = args.save_dir + "/" + args.dataset + "_" + args.arch + "_split" + str(args.split) +  '_pseudo_' + str(args.threshold) +'_transfer_'
+    saveLocation = args.save_dir + "/" + args.dataset + "_" + args.arch + "_split" + str(args.split) +  '_contrastive_' + str(args.threshold) +'_transfer_'
     if args.model_transfer == '':
         saveLocation += 'False'
     else:
