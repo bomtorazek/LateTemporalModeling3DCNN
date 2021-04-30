@@ -138,7 +138,8 @@ class cvpr(data.Dataset):
                  transform=None,
                  target_transform=None,
                  video_transform=None,
-                 ensemble_training = False):
+                 ensemble_training=False,
+                 tta=1):
 
         classes, class_to_idx = find_classes(root)
         clips = make_dataset(root, source)
@@ -156,6 +157,7 @@ class cvpr(data.Dataset):
         self.class_to_idx = class_to_idx
         self.clips = clips
         self.ensemble_training = ensemble_training
+        self.tta = tta
 
         if name_pattern:
             self.name_pattern = name_pattern
@@ -196,9 +198,18 @@ class cvpr(data.Dataset):
                     offsets.append(0 + seg_id * increase)
             elif self.phase == "val":
                 if average_duration >= self.new_length:
-                    offsets.append(int((average_duration - self.new_length + 1)/2 + seg_id * average_duration))
+                    if self.tta > 1:
+                        offset = random.randint(0, average_duration - self.new_length)
+                        # No +1 because randint(a,b) return a random integer N such that a <= N <= b.
+                        offsets.append(offset + seg_id * average_duration)
+                    else:
+                        offsets.append(int((average_duration - self.new_length + 1)/2 + seg_id * average_duration))
                 elif duration >= self.new_length:
-                    offsets.append(int((seg_id*average_part_length + (seg_id + 1) * average_part_length)/2))
+                    if self.tta > 1:
+                        offset = random.randint(0, average_part_length)
+                        offsets.append(seg_id*average_part_length + offset)
+                    else:
+                        offsets.append(int((seg_id*average_part_length + (seg_id + 1) * average_part_length)/2))
                 else:
                     increase = int(duration / self.num_segments)
                     offsets.append(0 + seg_id * increase)
