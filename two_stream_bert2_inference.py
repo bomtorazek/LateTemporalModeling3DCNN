@@ -201,8 +201,8 @@ def main():
             ])
 
     # data loading
-    #val_setting_file = "test_%s_split%d.txt" % (modality, args.split)
-    val_setting_file = "val_%s_split%d.txt" % (modality, args.split) #FIXME
+    val_setting_file = "test_%s_split00.txt" % (modality) #, args.split)
+    #val_setting_file = "val_%s_split%d.txt" % (modality, args.split) #FIXME
     print("will test on", val_setting_file, "dataset")
     val_split_file = os.path.join(args.settings, args.dataset, val_setting_file)
     if not os.path.exists(val_split_file):
@@ -219,7 +219,8 @@ def main():
                                                   new_width=width,
                                                   new_height=height,
                                                   video_transform=val_transform,
-                                                  num_segments=args.num_seg)
+                                                  num_segments=args.num_seg,
+                                                  tta=args.tta)
 
     print(' {} test samples.'.format(len(val_dataset)))
     val_loader = torch.utils.data.DataLoader(
@@ -287,13 +288,14 @@ def validate(val_loader, model,modality):
                     # compute output
                     output, input_vectors, sequenceOut, _ = model(inputs)
                     for i in range(len(names)): #FIXME
-
-                        if int(names[i]) in pred_dict:
-                            pred_dict[int(names[i])] += torch.argmax(output[i]).item() # if the name of files are integers
-                            prob_dict[int(names[i])] += softmax((output[i])).detach().cpu().numpy()
+                        #save_name = int(names[i])
+                        save_name = names[i]
+                        if save_name in pred_dict:
+                            pred_dict[save_name] += torch.argmax(output[i]).item() # if the name of files are integers
+                            prob_dict[save_name] += softmax((output[i])).detach().cpu().numpy()
                         else:
-                            pred_dict[int(names[i])] = torch.argmax(output[i]).item() # if the name of files are integers
-                            prob_dict[int(names[i])] = softmax((output[i])).detach().cpu().numpy()
+                            pred_dict[save_name] = torch.argmax(output[i]).item() # if the name of files are integers
+                            prob_dict[save_name] = softmax((output[i])).detach().cpu().numpy()
                     
                     # measure accuracy and record loss 
                     if targets != []: #FIXME
@@ -305,6 +307,7 @@ def validate(val_loader, model,modality):
             # averaging pred dict, prob dict
             for key in pred_dict.keys():
                 pred_dict[key] /= args.tta
+                pred_dict[key] = int(pred_dict[key])
                 prob_dict[key] /= args.tta
         
             # measure elapsed time
@@ -351,12 +354,6 @@ def validate(val_loader, model,modality):
                 batch_time.update(time.time() - end)
                 end = time.time()
 
-        # using dict, make .csv files
-        with open(f'track{args.track}_pred.csv', 'w') as f:
-            pencil = csv.writer(f) 
-            pencil.writerow(['VideoID', 'Video', 'ClassID'])
-            for idx, key in enumerate(sorted(pred_dict.keys())):
-                pencil.writerow([idx, str(key)+'.mp4', pred_dict[key]+5]) # real class in Track2.1 # FIXME for semi
 
         spt = args.model_path.split('/')
         for idx, dir in enumerate(spt):
@@ -364,8 +361,16 @@ def validate(val_loader, model,modality):
                 chk_idx = idx
                 break
         model_name_from_path= spt[chk_idx]
+        ckpt_name = spt[-1]
 
-        with open(f'{model_name_from_path}_prob.csv', 'w') as f:
+        # using dict, make .csv files
+        with open(f'result/track{args.track}_{model_name_from_path}_{ckpt_name}_pred_tta{args.tta}.csv', 'w') as f:
+            pencil = csv.writer(f) 
+            pencil.writerow(['VideoID', 'Video', 'ClassID'])
+            for idx, key in enumerate(sorted(pred_dict.keys())):
+                pencil.writerow([idx, str(key)+'.mp4', pred_dict[key]+5]) # real class in Track2.1 # FIXME for semi
+
+        with open(f'result/{model_name_from_path}_{ckpt_name}_prob.csv', 'w') as f:
             pencil = csv.writer(f) 
             pencil.writerow(['VideoID', 'Video', 'Run', 'Sit', 'Stand', 'Turn', 'Walk', 'Wave']) #FIXME for semi
             for idx, key in enumerate(sorted(prob_dict.keys())):  
