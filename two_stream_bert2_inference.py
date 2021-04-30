@@ -29,7 +29,6 @@ from torch.optim import lr_scheduler
 import video_transforms
 import models
 import datasets
-import swats
 from opt.AdamW import AdamW
 from utils.model_path import rgb_3d_model_path_selection
 from two_stream_bert import data_config
@@ -45,7 +44,7 @@ parser = argparse.ArgumentParser(description='PyTorch Two-Stream Action Recognit
 parser.add_argument('--settings', metavar='DIR', default='./datasets/settings',
                     help='path to datset setting files')
 parser.add_argument('--dataset', '-d', default='hmdb51',
-                    choices=["ucf101", "hmdb51", "smtV2", "window", "cvpr", "semi_cvpr"],
+                    choices=["ucf101", "hmdb51", "smtV2", "window", "cvpr", "semi_cvpr", "cvpr_test"],
                     help='dataset: ucf101 | hmdb51 | smtV2')
 
 parser.add_argument('--arch', '-a', default='rgb_resneXt3D64f101_bert10_FRMB',
@@ -204,13 +203,13 @@ def main():
     val_setting_file = "test_%s_split00.txt" % (modality) #, args.split)
     #val_setting_file = "val_%s_split%d.txt" % (modality, args.split) #FIXME
     print("will test on", val_setting_file, "dataset")
-    val_split_file = os.path.join(args.settings, args.dataset, val_setting_file)
+    val_split_file = os.path.join(args.settings, "cvpr", val_setting_file)
     if not os.path.exists(val_split_file):
         print("No split file exists in %s directory. Preprocess the dataset first" % (args.settings))
 
     #root = 'cvpr_frames'!!
     
-    val_dataset = datasets.__dict__[args.dataset](root=dataset,
+    val_dataset = datasets.__dict__["cvpr"](root=dataset,
                                                   source=val_split_file,
                                                   phase="val",
                                                   modality=modality,
