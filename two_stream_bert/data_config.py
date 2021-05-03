@@ -18,6 +18,8 @@ def get_dataset(args):
         dataset='/data/hyeokjae/results/UG2-2021/optical_flow/tv-l1/Track2.1/sid_gic'
     elif args.dataset == 'cvpr_test':
         dataset='/data/hyeokjae/results/UG2-2021/optical_flow/tv-l1/Track2.1-Test/raw'
+    elif args.dataset == 'cvpr_test_sid_gic':
+        dataset='/data/hyeokjae/results/UG2-2021/optical_flow/tv-l1/Track2.1-Test/sid_gic'
     elif args.dataset=='cvpr_le':
         dataset='./datasets/cvpr_le_frames'
     else:

@@ -44,7 +44,7 @@ parser = argparse.ArgumentParser(description='PyTorch Two-Stream Action Recognit
 parser.add_argument('--settings', metavar='DIR', default='./datasets/settings',
                     help='path to datset setting files')
 parser.add_argument('--dataset', '-d', default='hmdb51',
-                    choices=["ucf101", "hmdb51", "smtV2", "window", "cvpr", "semi_cvpr", "cvpr_test"],
+                    choices=["ucf101", "hmdb51", "smtV2", "window", "cvpr", "semi_cvpr", "cvpr_test", "cvpr_test_sid_gic"],
                     help='dataset: ucf101 | hmdb51 | smtV2')
 
 parser.add_argument('--arch', '-a', default='rgb_resneXt3D64f101_bert10_FRMB',
@@ -219,7 +219,8 @@ def main():
                                                   new_height=height,
                                                   video_transform=val_transform,
                                                   num_segments=args.num_seg,
-                                                  tta=args.tta)
+                                                  tta=args.tta,
+                                                  aggregate_rgb_flow=args.aggregate_rgb_flow)
 
     print(' {} test samples.'.format(len(val_dataset)))
     val_loader = torch.utils.data.DataLoader(

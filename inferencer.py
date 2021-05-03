@@ -8,7 +8,7 @@ args = parser.parse_args()
 
 model_path = args.model_path # "/data_hdd/hoseong/videoexp/cvpr_rgb_r2plus1d_64f_34_bert10_split0_mixtype_None_optimizer_AdamW_randaug_1_3/"
 
-core_cmd = "python two_stream_bert2_inference.py --split=00 --arch=rgb_r2plus1d_64f_34_bert10 --workers=4 --batch-size=2 --dataset=cvpr --gpu {} --tta 1 \
+core_cmd = "python two_stream_bert2_inference.py --split=00 --arch=rgb_r2plus1d_64f_34_bert10 --workers=4 --batch-size=2 --dataset=cvpr_test_sid_gic --gpu {} --tta 1 \
 --model-path={}".format(args.gpu, model_path)
 
 

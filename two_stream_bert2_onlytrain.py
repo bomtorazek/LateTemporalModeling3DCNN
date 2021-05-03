@@ -84,7 +84,7 @@ def main():
     train_split_file = os.path.join(args.settings, "cvpr", train_setting_file)
 
     train_dataset = datasets.__dict__["cvpr"](root=dataset, source=train_split_file, phase="train", modality=modality, is_color=is_color,
-                                                    new_length=length, new_width=width, new_height=height, video_transform=train_transform, num_segments=args.num_seg)
+                                                    new_length=length, new_width=width, new_height=height, video_transform=train_transform, num_segments=args.num_seg, aggregate_rgb_flow=args.aggregate_rgb_flow)
     
     print('{} train samples .'.format(len(train_dataset)))
 

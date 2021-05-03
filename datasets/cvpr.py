@@ -139,6 +139,7 @@ class cvpr(data.Dataset):
                  target_transform=None,
                  video_transform=None,
                  ensemble_training=False,
+                 aggregate_rgb_flow=False,
                  tta=1):
 
         classes, class_to_idx = find_classes(root)
@@ -166,7 +167,7 @@ class cvpr(data.Dataset):
                 self.name_pattern = "img_%05d.jpg"
             elif self.modality == "flow":
                 self.name_pattern = "flow_%s_%05d.jpg"
-        self.aggregate_rgb_flow = True
+        self.aggregate_rgb_flow = aggregate_rgb_flow
 
         self.is_color = is_color
         self.num_segments = num_segments

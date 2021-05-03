@@ -50,6 +50,7 @@ def get_args():
     parser.add_argument('--gpu', default='0', type=str, help='gpu id')
     parser.add_argument('--half_precision', action='store_true', help='half precision training')
     parser.add_argument('--reverse_aug', action='store_true', help='data augmentation with frame reversing')
+    parser.add_argument('--aggregate_rgb_flow', action='store_true', help='aggregate rgb and optical flow as input')
 
     # For Temporal Augmentations
     parser.add_argument('--treg_mix_prob', default=1.0, type=float)
