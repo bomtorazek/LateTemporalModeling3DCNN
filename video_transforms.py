@@ -39,6 +39,15 @@ class Lambda(object):
     def __call__(self, clips):
         return self.lambd(clips)
 
+class GIC(object):
+    """ Gamma Intensity Correction """
+    def __init__(self, gamma=1.0):
+        self.gamma = gamma
+    def __call__(self, clips):
+        clips = clips/255
+        clips = np.power(clips, self.gamma) * 255
+        return clips
+
 class ToTensor(object):
     """Converts a numpy.ndarray (H x W x C) in the range
     [0, 255] to a torch.FloatTensor of shape (C x H x W) in the range [0.0, 1.0].
@@ -50,7 +59,7 @@ class ToTensor(object):
             clips = torch.from_numpy(clips.transpose((2, 0, 1)))
             # backward compatibility
             return clips.float().div(255.0)
-        
+
 class ToTensor3(object):
     """Converts a numpy.ndarray (H x W x C) in the range
     [0, 255] to a torch.FloatTensor of shape (C x H x W) in the range [0.0, 1.0].
@@ -62,7 +71,7 @@ class ToTensor3(object):
             clips = torch.from_numpy(clips.transpose((3, 2, 0, 1)))
             # backward compatibility
             return clips.float().div(255.0)
-        
+
 class ToTensor2(object):
 
     def __call__(self, clips):
@@ -71,16 +80,16 @@ class ToTensor2(object):
             clips = torch.from_numpy(clips.transpose((2, 0, 1)))
             # backward compatibility
             return clips.float().div(1.0)
-        
+
 class Reset(object):
     def __init__(self, mask_prob, num_seg):
         self.mask_prob = mask_prob
         self.num_seg =num_seg
-        
+
     def __call__(self, clips):
         mask=np.random.binomial(1, self.mask_prob, self.num_seg).repeat(3)
         return clips*mask
-    
+
 class Normalize(object):
     """Given mean: (R, G, B) and std: (R, G, B),
     will normalize each channel of the torch.*Tensor, i.e.
@@ -123,7 +132,7 @@ class DeNormalize(object):
         # for t, m, s in zip(tensor, self.mean, self.std):
         #     t.sub_(m).div_(s)
         return tensor2
-    
+
 class Normalize3(object):
     """Given mean: (R, G, B) and std: (R, G, B),
     will normalize each channel of the torch.*Tensor, i.e.
@@ -157,7 +166,7 @@ class Normalize2(object):
         for t, m, s in zip(tensor, mean, std):
             t.sub_(m).div_(s)
         return tensor
-    
+
 class Scale(object):
     """ Rescales the input numpy array to the given 'size'.
     'size' will be the size of the smaller edge.
@@ -465,8 +474,8 @@ class MultiScaleFixedCrop(object):
         for offset in offsets:
             h_off = offset[0]
             w_off = offset[1]
-    
-    
+
+
             scaled_clips = np.zeros((self.height,self.width,c))
             scaled_clips_flips = np.zeros((self.height,self.width,c))
             if is_color:
@@ -483,7 +492,7 @@ class MultiScaleFixedCrop(object):
                     crop_img = cur_img[h_off:h_off+crop_height, w_off:w_off+crop_width, :]
                     scaled_clips[:,:,frame_id:frame_id+1] = np.expand_dims(cv2.resize(crop_img, (self.width, self.height), self.interpolation), axis=2)
                     scaled_clips_flips = scaled_clips[:,::-1,:].copy()
-                    
+
             scaled_clips_list.append(np.expand_dims(scaled_clips,-1))
             scaled_clips_list.append(np.expand_dims(scaled_clips_flips,-1))
         return np.concatenate(scaled_clips_list,axis=-1)
@@ -520,13 +529,13 @@ class rawPoseAugmentation(object):
         if len(poses[poses>1]) > 0:
             print('basdasd')
         return poses
-    
+
 class pose_one_hot_decoding(object):
     def __init__(self,length):
         self.space = 0.1
         self.number_of_people = 1
         self.total_bins = self.number_of_people * 25
-        self.one_hot_vector_length_per_joint = (1/self.space ) ** 2 
+        self.one_hot_vector_length_per_joint = (1/self.space ) ** 2
         self.one_hot_vector_length = int(self.total_bins * self.one_hot_vector_length_per_joint + 1)
         self.one_hot = np.zeros(self.one_hot_vector_length)
         self.length = length
@@ -539,9 +548,9 @@ class pose_one_hot_decoding(object):
         one_hot_values[np.isnan(one_hot_values)] = self.one_hot_vector_length_per_joint
         one_hot_values = one_hot_values * self.onehot_multiplication + one_hot_values
         one_hot_values[np.isnan(one_hot_values)] = self.one_hot_vector_length + 1
-        
+
         return poses
-    
+
 class pose_one_hot_decoding2(object):
     def __init__(self,length):
         self.space = 1/32
@@ -568,10 +577,10 @@ class pose_one_hot_decoding2(object):
         one_hot_encoding = self.position_matrix[:self.bin_number, :self.bin_number, :]
         one_hot_encoding = one_hot_encoding.reshape(-1,self.length)
         one_hot_encoding_torch = torch.from_numpy(one_hot_encoding.transpose((1,0))).float()
-        
-        
+
+
         return one_hot_encoding_torch
-        
+
 class ToTensorPose(object):
 
     def __call__(self, clips):
@@ -582,5 +591,5 @@ class ToTensorPose(object):
             clips = torch.from_numpy(clips.transpose((3,0,1,2))).float()
             # backward compatibility
             return clips
-        
-                    
+
+

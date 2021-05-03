@@ -67,6 +67,7 @@ parser.add_argument('--light_enhanced', action='store_true', default=False)
 parser.add_argument('--gpu', default = '0', type=str, help = 'gpuid')
 parser.add_argument('--tta', default=1, type=int)
 parser.add_argument('--save-csv', action='store_true', default = False)
+parser.add_argument('--gic_gamma', default=1.0, type=float)
 
 
 
@@ -94,27 +95,27 @@ def main():
         scale = 0.5
     else:
         scale = 1
-        
+
     print('scale: %.1f' %(scale))
-    
+
     input_size = int(224 * scale)
     width = int(340 * scale)
     height = int(256 * scale)
-   
-    # create model    
+
+    # create model
     print("Building validation model ... ")
     model = build_model_validate(args.model_path)
-    
+
     if HALF:
         model.half()  # convert to half precision
         for layer in model.modules():
             if isinstance(layer, nn.BatchNorm2d):
                 layer.float()
-    
+
     print("Model %s is loaded. " % (args.arch))
 
     dataset = data_config.get_dataset(args)
-    
+
     cudnn.benchmark = True
     modality=args.arch.split('_')[0]
     if "3D" in args.arch or 'tsm' in args.arch or 'slowfast' in args.arch or 'r2plus1d' in args.arch:
@@ -149,7 +150,7 @@ def main():
             clip_std = [0.22803, 0.22145, 0.216989] * args.num_seg * length
         elif "rep_flow" in args.arch:
             clip_mean = [0.5, 0.5, 0.5] * args.num_seg * length
-            clip_std = [0.5, 0.5, 0.5] * args.num_seg * length      
+            clip_std = [0.5, 0.5, 0.5] * args.num_seg * length
         elif "slowfast" in args.arch:
             clip_mean = [0.45, 0.45, 0.45] * args.num_seg * length
             clip_std = [0.225, 0.225, 0.225] * args.num_seg * length
@@ -169,7 +170,7 @@ def main():
             clip_std = [0.5, 0.5] * args.num_seg * length
         elif "3D" in args.arch:
             clip_mean = [127.5, 127.5] * args.num_seg * length
-            clip_std = [1, 1] * args.num_seg * length        
+            clip_std = [1, 1] * args.num_seg * length
         else:
             clip_mean = [0.5, 0.5] * args.num_seg * length
             clip_std = [0.226, 0.226] * args.num_seg * length
@@ -181,14 +182,16 @@ def main():
     else:
         print("No such modality. Only rgb and flow supported.")
 
-    
+
     normalize = video_transforms.Normalize(mean=clip_mean,
                                            std=clip_std)
+    gic = video_transforms.GIC(args.gic_gamma)
 
     if "3D" in args.arch and not ('I3D' in args.arch):
-    
+
         val_transform = video_transforms.Compose([
                 video_transforms.CenterCrop((input_size)),
+                gic,
                 video_transforms.ToTensor2(),
                 normalize,
             ])
@@ -196,6 +199,7 @@ def main():
 
         val_transform = video_transforms.Compose([
                 video_transforms.CenterCrop((input_size)),
+                gic,
                 video_transforms.ToTensor(),
                 normalize,
             ])
@@ -209,7 +213,7 @@ def main():
         print("No split file exists in %s directory. Preprocess the dataset first" % (args.settings))
 
     #root = 'cvpr_frames'!!
-    
+
     val_dataset = datasets.__dict__[args.dataset](root=dataset,
                                                   source=val_split_file,
                                                   phase="val",
@@ -228,8 +232,8 @@ def main():
         num_workers=args.workers, pin_memory=True)
 
     acc1,acc3= validate(val_loader, model,modality)
-    
-    
+
+
 def build_model_validate(model_path):
     params = torch.load(model_path)
     print("model from",model_path)
@@ -237,17 +241,17 @@ def build_model_validate(model_path):
         model=models.__dict__[args.arch](modelPath='', num_classes=101,length=args.num_seg)
     elif args.dataset=='hmdb51':
         model=models.__dict__[args.arch](modelPath='', num_classes=51,length=args.num_seg)
-    elif 'semi' in args.dataset: 
+    elif 'semi' in args.dataset:
         model = models.__dict__[args.arch](modelPath='', num_classes=5, length=args.num_seg)
-    elif 'cvpr' in args.dataset: 
+    elif 'cvpr' in args.dataset:
         model = models.__dict__[args.arch](modelPath='', num_classes=6, length=args.num_seg)
-    
+
     if torch.cuda.device_count() > 1:
-        model=torch.nn.DataParallel(model) 
+        model=torch.nn.DataParallel(model)
 
     model.load_state_dict(params['state_dict'])
     model.cuda()
-    model.eval() 
+    model.eval()
     return model
 
 def validate(val_loader, model,modality):
@@ -276,14 +280,14 @@ def validate(val_loader, model,modality):
                             inputs=inputs.view(-1,2*length,input_size,input_size)
                     elif modality == "both":
                         inputs=inputs.view(-1,5*length,input_size,input_size)
-                        
+
                     if HALF:
                         inputs = inputs.cuda().half()
                     else:
                         inputs = inputs.cuda()
                     if targets != []:
                         targets = targets.cuda()
-                    
+
                     # compute output
                     output, input_vectors, sequenceOut, _ = model(inputs)
                     for i in range(len(names)): #FIXME
@@ -294,11 +298,11 @@ def validate(val_loader, model,modality):
                         else:
                             pred_dict[int(names[i])] = torch.argmax(output[i]).item() # if the name of files are integers
                             prob_dict[int(names[i])] = softmax((output[i])).detach().cpu().numpy()
-                    
-                    # measure accuracy and record loss 
+
+                    # measure accuracy and record loss
                     if targets != []: #FIXME
                         acc1, acc3 = accuracy(output.data, targets, topk=(1, 3))
-                    
+
                         top1.update(acc1.item(), output.size(0))
                         top3.update(acc3.item(), output.size(0))
 
@@ -306,11 +310,11 @@ def validate(val_loader, model,modality):
             for key in pred_dict.keys():
                 pred_dict[key] /= args.tta
                 prob_dict[key] /= args.tta
-        
+
             # measure elapsed time
             batch_time.update(time.time() - end)
             end = time.time()
-        else: 
+        else:
             for i, (names, inputs, targets) in enumerate(val_loader):
                 if modality == "rgb" or modality == "pose":
                     if "3D" in args.arch or "r2plus1d" in args.arch or 'slowfast' in args.arch:
@@ -322,15 +326,15 @@ def validate(val_loader, model,modality):
                         inputs=inputs.view(-1,2*length,input_size,input_size)
                 elif modality == "both":
                     inputs=inputs.view(-1,5*length,input_size,input_size)
-                    
+
                 if HALF:
                     inputs = inputs.cuda().half()
                 else:
                     inputs = inputs.cuda()
                 if targets != []:
                     targets = targets.cuda()
-                
-        
+
+
                 # compute output
                 output, input_vectors, sequenceOut, _ = model(inputs)
                 for i in range(len(names)): #FIXME
@@ -347,10 +351,10 @@ def validate(val_loader, model,modality):
                 # measure accuracy and record loss
                 if targets != []:
                     acc1, acc3 = accuracy(output.data, targets, topk=(1, 3))
-                
+
                     top1.update(acc1.item(), output.size(0))
                     top3.update(acc3.item(), output.size(0))
-            
+
                 # measure elapsed time
                 batch_time.update(time.time() - end)
                 end = time.time()
@@ -358,10 +362,10 @@ def validate(val_loader, model,modality):
         # using dict, make .csv files
         if args.save_csv:
             with open(f'track{args.track}_pred.csv', 'w') as f:
-                pencil = csv.writer(f) 
+                pencil = csv.writer(f)
                 pencil.writerow(['VideoID', 'Video', 'ClassID'])
                 for idx, key in enumerate(sorted(pred_dict.keys())):
-                    pencil.writerow([idx, str(key)+'.mp4', pred_dict[key]]) 
+                    pencil.writerow([idx, str(key)+'.mp4', pred_dict[key]])
 
             spt = args.model_path.split('/')
             for idx, dir in enumerate(spt):
@@ -371,14 +375,14 @@ def validate(val_loader, model,modality):
             model_name_from_path= spt[chk_idx] + '_'+spt[chk_idx+1]
 
             with open(f'{model_name_from_path}_prob.csv', 'w') as f:
-                pencil = csv.writer(f) 
+                pencil = csv.writer(f)
                 pencil.writerow(['VideoID', 'Video', 'Drink', 'Jump', 'Pick', 'Pour', 'Push'])
-                for idx, key in enumerate(sorted(prob_dict.keys())):  
-                    pencil.writerow([idx, str(key)+'.mp4', prob_dict[key][0],prob_dict[key][1],prob_dict[key][2],prob_dict[key][3],prob_dict[key][4]]) 
+                for idx, key in enumerate(sorted(prob_dict.keys())):
+                    pencil.writerow([idx, str(key)+'.mp4', prob_dict[key][0],prob_dict[key][1],prob_dict[key][2],prob_dict[key][3],prob_dict[key][4]])
 
 
-        if targets != []:    
-            print(' * * acc@1 {top1.avg:.3f} acc@3 {top3.avg:.3f} \n' 
+        if targets != []:
+            print(' * * acc@1 {top1.avg:.3f} acc@3 {top3.avg:.3f} \n'
                 .format(top1=top1, top3=top3))
     if targets != []:
         return top1.avg, top3.avg
@@ -402,7 +406,7 @@ class AverageMeter(object):
         self.count += n
         self.avg = self.sum / self.count
 
-        
+
 def accuracy(output, target, topk=(1,)):
     """Computes the accuracy@k for the specified values of k"""
     maxk = max(topk)

@@ -17,9 +17,9 @@ def get_size(args):
         scale = 0.5
     else:
         scale = 1
-        
+
     print('scale: %.1f' %(scale))
-    
+
     input_size = int(224 * scale)
     width = int(340 * scale)
     height = int(256 * scale)
@@ -39,7 +39,7 @@ def get_data_stat(args):
             length=16
     else:
         length=1
-        
+
     # Data transforming
     if modality == "rgb" or modality == "pose":
         is_color = True
@@ -62,7 +62,7 @@ def get_data_stat(args):
             clip_std = [0.22803, 0.22145, 0.216989] * args.num_seg * length
         elif "rep_flow" in args.arch:
             clip_mean = [0.5, 0.5, 0.5] * args.num_seg * length
-            clip_std = [0.5, 0.5, 0.5] * args.num_seg * length      
+            clip_std = [0.5, 0.5, 0.5] * args.num_seg * length
         elif "slowfast" in args.arch:
             clip_mean = [0.45, 0.45, 0.45] * args.num_seg * length
             clip_std = [0.225, 0.225, 0.225] * args.num_seg * length
@@ -82,7 +82,7 @@ def get_data_stat(args):
             clip_std = [0.5, 0.5] * args.num_seg * length
         elif "3D" in args.arch:
             clip_mean = [127.5, 127.5] * args.num_seg * length
-            clip_std = [1, 1] * args.num_seg * length        
+            clip_std = [1, 1] * args.num_seg * length
         else:
             clip_mean = [0.5, 0.5] * args.num_seg * length
             clip_std = [0.226, 0.226] * args.num_seg * length
@@ -93,7 +93,7 @@ def get_data_stat(args):
         clip_std = [0.229, 0.224, 0.225, 0.226, 0.226] * args.num_seg * length
     else:
         raise NameError("No such modality. Only rgb and flow supported.")
-    
+
     return length, modality, is_color, scale_ratios, clip_mean, clip_std
 
 
@@ -105,7 +105,7 @@ class TransformFixMatch(object):
         rand_n = int(randaug[0])
         rand_m =int(randaug[1])
 
-        if totensor == 1:    
+        if totensor == 1:
             self.weak = video_transforms.Compose([
                     video_transforms.MultiScaleCrop((input_size, input_size), scale_ratios),
                     video_transforms.RandomHorizontalFlip(),
@@ -149,7 +149,7 @@ def get_transforms(input_size, scale_ratios, clip_mean, clip_std, args):
             ])
 
         unlabeled_train_transform = TransformFixMatch(input_size, scale_ratios,args.randaug, 2, normalize)
-    
+
         val_transform = video_transforms.Compose([
                 video_transforms.CenterCrop((input_size)),
                 video_transforms.ToTensor2(),
@@ -171,7 +171,7 @@ def get_transforms(input_size, scale_ratios, clip_mean, clip_std, args):
                 video_transforms.ToTensor(),
                 normalize,
             ])
-    
+
 
     return train_transform, unlabeled_train_transform, val_transform
 
@@ -182,25 +182,28 @@ def get_transforms(input_size, scale_ratios, clip_mean, clip_std, args):
 
 def get_transforms_semi(input_size, scale_ratios, clip_mean, clip_std, args):
     normalize = video_transforms.Normalize(mean=clip_mean, std=clip_std)
+    gic = video_transforms.GIC(args.gic_gamma)
 
     if "3D" in args.arch and not ('I3D' in args.arch):
 
         unlabeled_train_transform = TransformFixMatch(input_size, scale_ratios,args.randaug, 2, normalize)
-    
+
         val_transform = video_transforms.Compose([
                 video_transforms.CenterCrop((input_size)),
+                gic,
                 video_transforms.ToTensor2(),
                 normalize,
             ])
     else:
 
         unlabeled_train_transform = TransformFixMatch(input_size,scale_ratios, args.randaug, 1, normalize)
-        
+
         val_transform = video_transforms.Compose([
                 video_transforms.CenterCrop((input_size)),
                 video_transforms.ToTensor(),
+                gic,
                 normalize,
             ])
-    
+
 
     return  unlabeled_train_transform, val_transform

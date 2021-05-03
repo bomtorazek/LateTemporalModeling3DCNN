@@ -37,6 +37,7 @@ def get_args():
                         help='pseudo label threshold')
     parser.add_argument('--light_enhanced', action='store_true', default=False)
     parser.add_argument('--save_dir', metavar='DIR', default='./checkpoint',help='path to save checkpoints')
+    parser.add_argument('--gic_gamma', default=1.0, type=float)
 
 
     ### Training
@@ -59,7 +60,7 @@ def get_args():
                         help='momentum (default: 0.9)')
     parser.add_argument('--nesterov', action='store_true', default=True,
                         help='use nesterov momentum')
-    parser.add_argument('--use-ema', action='store_true', 
+    parser.add_argument('--use-ema', action='store_true',
                         help='use EMA model')
     parser.add_argument('--ema-decay', default=0.999, type=float,
                         help='EMA decay rate')
