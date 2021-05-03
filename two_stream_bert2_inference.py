@@ -334,7 +334,10 @@ def validate(val_loader, model,modality):
                 # compute output
                 output, input_vectors, sequenceOut, _ = model(inputs)
                 for i in range(len(names)): #FIXME
-                    names[i] = names[i].split('_')[1] #name format == vailidaiton_3
+                    try:
+                        int(names[i])
+                    except:
+                        names[i] = names[i].split('_')[1] #name format == vailidaiton_3
                     pred_dict[int(names[i])] = torch.argmax(output[i]).item() # if the name of files are integers
                     prob_dict[int(names[i])] = softmax((output[i])).detach().cpu().numpy()
                     # pred_dict[(names[i])] = torch.argmax(output[i]).item()
@@ -365,7 +368,7 @@ def validate(val_loader, model,modality):
                 if args.arch in dir:
                     chk_idx = idx
                     break
-            model_name_from_path= spt[chk_idx]
+            model_name_from_path= spt[chk_idx] + '_'+spt[chk_idx+1]
 
             with open(f'{model_name_from_path}_prob.csv', 'w') as f:
                 pencil = csv.writer(f) 
